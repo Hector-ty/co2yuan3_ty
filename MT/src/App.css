@@ -1,0 +1,47 @@
+.App {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #0a0e27;
+  color: #fff;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .App {
+    font-size: 14px;
+  }
+}
+
+/* 触摸优化 */
+button, a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* 滚动优化 */
+.scroll-container {
+  -webkit-overflow-scrolling: touch;
+  overflow-scrolling: touch;
+}
+
+/* 图表容器优化 */
+.chart-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.chart-wrapper {
+  width: 100%;
+  min-height: 300px;
+  padding: 10px;
+}
+
+/* 移动端卡片样式 */
+.mobile-card {
+  background: #1a1f3a;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}

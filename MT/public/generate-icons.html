@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PWA 图标生成器</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    canvas {
+      border: 1px solid #ddd;
+      margin: 10px;
+      display: block;
+    }
+    button {
+      background: #66bb6a;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #4caf50;
+    }
+    .icon-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin: 20px 0;
+    }
+    .icon-item {
+      text-align: center;
+    }
+    h1 {
+      color: #0a0e27;
+    }
+    .instructions {
+      background: #e3f2fd;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📱 PWA 应用图标生成器</h1>
+    
+    <div class="instructions">
+      <h3>使用说明：</h3>
+      <ol>
+        <li>点击下方的"生成图标"按钮</li>
+        <li>右键点击生成的图标，选择"图片另存为"</li>
+        <li>将图标保存到项目的 <code>public/</code> 目录</li>
+        <li>文件名分别为：<code>pwa-192x192.png</code>, <code>pwa-512x512.png</code>, <code>apple-touch-icon.png</code></li>
+      </ol>
+    </div>
+
+    <button onclick="generateIcons()">生成所有图标</button>
+    <button onclick="downloadAll()">下载所有图标</button>
+
+    <div class="icon-preview" id="preview"></div>
+  </div>
+
+  <script>
+    function drawIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      canvas.width = size;
+      canvas.height = size;
+
+      // 背景
+      ctx.fillStyle = '#0a0e27';
+      ctx.beginPath();
+      ctx.arc(size/2, size/2, size/2 - 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 外圈
+      ctx.strokeStyle = '#66bb6a';
+      ctx.lineWidth = size / 64;
+      ctx.beginPath();
+      ctx.arc(size/2, size/2, size/2 - 4, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // CO₂ 文字
+      ctx.fillStyle = '#66bb6a';
+      ctx.font = `bold ${size * 0.35}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      const textY = size * 0.42;
+      ctx.fillText('CO', size/2, textY);
+      
+      // 下标 2
+      ctx.font = `bold ${size * 0.25}px Arial`;
+      ctx.fillText('₂', size/2, textY + size * 0.15);
+
+      // 装饰点
+      const dotSize = size / 16;
+      ctx.fillStyle = '#42a5f5';
+      
+      // 四个角的装饰点
+      const margin = size * 0.15;
+      ctx.beginPath();
+      ctx.arc(margin, margin, dotSize, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.arc(size - margin, margin, dotSize, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.arc(margin, size - margin, dotSize, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.arc(size - margin, size - margin, dotSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const icons = [
+      { name: 'pwa-192x192.png', size: 192 },
+      { name: 'pwa-512x512.png', size: 512 },
+      { name: 'apple-touch-icon.png', size: 180 }
+    ];
+
+    function generateIcons() {
+      const preview = document.getElementById('preview');
+      preview.innerHTML = '';
+
+      icons.forEach(icon => {
+        const canvas = document.createElement('canvas');
+        drawIcon(canvas, icon.size);
+        
+        const div = document.createElement('div');
+        div.className = 'icon-item';
+        
+        const label = document.createElement('div');
+        label.textContent = `${icon.name} (${icon.size}x${icon.size})`;
+        label.style.marginTop = '5px';
+        label.style.fontSize = '12px';
+        
+        const downloadBtn = document.createElement('button');
+        downloadBtn.textContent = '下载';
+        downloadBtn.onclick = () => downloadIcon(canvas, icon.name);
+        
+        div.appendChild(canvas);
+        div.appendChild(label);
+        div.appendChild(downloadBtn);
+        preview.appendChild(div);
+      });
+    }
+
+    function downloadIcon(canvas, filename) {
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
+
+    function downloadAll() {
+      icons.forEach(icon => {
+        setTimeout(() => {
+          const canvas = document.createElement('canvas');
+          drawIcon(canvas, icon.size);
+          downloadIcon(canvas, icon.name);
+        }, icon.size); // 稍微延迟避免浏览器阻止多个下载
+      });
+    }
+
+    // 页面加载时自动生成
+    window.onload = generateIcons;
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

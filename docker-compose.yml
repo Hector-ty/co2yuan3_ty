@@ -1,0 +1,79 @@
+services:
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+
+  mobile:
+    build:
+      context: ./MT
+      dockerfile: Dockerfile
+    ports:
+      - "81:81"
+    depends_on:
+      - backend
+    restart: always
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/carbon_platform
+      - JWT_SECRET=a_very_secure_and_random_secret_string_for_jwt
+      - AI_SERVICE_URL=http://ai_service:8000
+      - PORT=8080
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=deepseek-r1:8b
+    depends_on:
+      - ai_service
+      - mongodb
+      - ollama
+    restart: always
+
+  mongodb: # 添加 mongodb 服务
+    image: docker.m.daocloud.io/library/mongo:6.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: always
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # GPU 支持配置
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: always
+
+  ai_service:
+    build:
+      context: ./ai_service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    restart: always
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+
+volumes: # 定义数据卷
+  mongodb_data:
+  ollama_data:

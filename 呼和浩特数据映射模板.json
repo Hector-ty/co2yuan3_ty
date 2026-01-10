@@ -1,0 +1,75 @@
+{
+  "templateName": "呼和浩特2024年数据导入模板",
+  "mappings": {
+    "组织机构代码": "regionCode",
+    "建筑面积(平方米)_当年": "activityData.intensityMetrics.buildingArea",
+    "用能人数(人)_当年": "activityData.intensityMetrics.personnelCount",
+    "电消费量(千瓦时)_当年": "activityData.indirectEmissions.purchasedElectricity",
+    "煤炭消费量(吨)_当年": "activityData.fossilFuels.solid.bituminousCoal",
+    "天然气消费量(立方米)_当年": "activityData.fossilFuels.gas.naturalGas",
+    "汽油消费量(升)_当年": "activityData.mobileSources.fuel.gasoline",
+    "柴油消费量(升)_当年": "activityData.mobileSources.fuel.diesel",
+    "热力消费量(吉焦)_当年": "activityData.indirectEmissions.purchasedHeat",
+    "液化石油气消费量(千克)_当年": "activityData.fossilFuels.liquid.lpg"
+  },
+  "notes": {
+    "单位转换说明": {
+      "电消费量(千瓦时)_当年": "需要除以10000转换为10^4 kWh",
+      "天然气消费量(立方米)_当年": "需要除以10000转换为10^4 m³",
+      "汽油消费量(升)_当年": "需要乘以0.75转换为千克（汽油密度约0.75 kg/L）",
+      "柴油消费量(升)_当年": "需要乘以0.85转换为千克（柴油密度约0.85 kg/L）",
+      "液化石油气消费量(千克)_当年": "需要除以1000转换为吨"
+    },
+    "年份": "从文件名提取：呼和浩特2024年1月.xls -> year: 2024",
+    "必填字段": ["year", "regionCode"]
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

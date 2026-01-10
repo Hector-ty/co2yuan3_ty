@@ -1,0 +1,876 @@
+================================================================================
+                    碳排放数据可视化系统 - 图表绘制逻辑代码整理
+================================================================================
+
+本文档包含所有图表组件的核心代码逻辑及简要注释
+
+================================================================================
+1. ChartAnalysis.jsx - 图表分析主组件
+================================================================================
+
+import React, { useState } from 'react';
+import EmissionPieChart from './charts/EmissionPieChart';
+import IntensityBarChart from './charts/IntensityBarChart';
+import YearlyEmissionBarChart from './charts/YearlyEmissionBarChart';
+import AnnualChangeLineChart from './charts/AnnualChangeLineChart';
+
+const ChartAnalysis = ({ selectedRecord, allData }) => {
+  const [compareMode, setCompareMode] = useState(false);
+  const [comparisonData, setComparisonData] = useState([]);
+
+  // 根据选中记录的regionCode过滤年度数据
+  const yearlyDataForSelectedRegion = (allData || []).filter(
+    d => d && selectedRecord && d.regionCode && selectedRecord.regionCode && 
+         d.regionCode === selectedRecord.regionCode
+  );
+
+  // 处理对比模式切换，获取同级别单位数据
+  const handleCompare = async (e) => {
+    const checked = e.target.checked;
+    setCompareMode(checked);
+    if (!checked || !selectedRecord) {
+      setComparisonData([]);
+      return;
+    }
+    try {
+      const res = await axios.get('/api/reports/compare', { 
+        params: { year: selectedRecord.year, regionCode: selectedRecord.regionCode } 
+      });
+      setComparisonData(res.data.data);
+    } catch (err) {
+      setError('获取对比数据失败');
+      setCompareMode(false);
+    }
+  };
+
+  // 安全地提取排放构成和强度数据
+  const breakdown = selectedRecord?.calculatedEmissions?.breakdown || {};
+  const intensity = selectedRecord?.calculatedEmissions?.intensity || {};
+
+  // 布局四个图表：排放构成、排放强度、年度排放量、年均变化率
+  return (
+    <Grid container spacing={3}>
+      <Grid item xs={12} md={6}>
+        <EmissionPieChart 
+          data={breakdown} 
+          comparisonData={comparisonData}
+          compareMode={compareMode}
+        />
+      </Grid>
+      <Grid item xs={12} md={6}>
+        <IntensityBarChart
+          recordData={{...intensity, regionName: regionName}}
+          comparisonData={comparisonData}
+          compareMode={compareMode}
+        />
+      </Grid>
+      <Grid item xs={12} md={6}>
+        <YearlyEmissionBarChart
+          yearlyData={yearlyDataForSelectedRegion}
+          currentYear={selectedRecord.year}
+          comparisonData={comparisonData}
+          compareMode={compareMode}
+        />
+      </Grid>
+      <Grid item xs={12} md={6}>
+        <AnnualChangeLineChart 
+          yearlyData={yearlyDataForSelectedRegion} 
+          compareMode={compareMode}
+        />
+      </Grid>
+    </Grid>
+  );
+};
+
+
+================================================================================
+2. EmissionPieChart.jsx - 排放构成饼图
+================================================================================
+
+import React from 'react';
+import ReactECharts from 'echarts-for-react';
+
+const emissionTypes = {
+  fossilFuels: '化石燃料燃烧',
+  mobileSources: '移动源燃烧',
+  electricity: '外购电力',
+  heat: '外购热力',
+};
+
+const EmissionPieChart = ({ data, comparisonData, compareMode }) => {
+  // 生成饼图配置选项
+  const generatePieOption = (title, chartDataSource) => {
+    // 将排放类型对象转换为图表数据数组
+    const chartData = Object.entries(emissionTypes).map(([key, name]) => ({
+      name,
+      value: chartDataSource[key] || 0,
+    })).filter(d => d.value > 0); // 过滤掉值为0的项
+
+    if (chartData.length === 0) return null;
+
+    return {
+      title: { text: title, left: 'center', top: 'bottom' },
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}: {c} tCO₂ ({d}%)' // 显示名称、数值、百分比
+      },
+      legend: {
+        orient: 'vertical', // 垂直排列
+        left: 'left',
+      },
+      series: [{
+        name: '排放来源',
+        type: 'pie',
+        radius: '50%', // 饼图半径
+        data: chartData,
+      }]
+    };
+  };
+
+  // 对比模式：计算同级别单位平均值
+  const renderComparisonChart = () => {
+    const validComparisonData = comparisonData.filter(
+      item => item && item.calculatedEmissions && item.calculatedEmissions.breakdown
+    );
+
+    // 计算平均排放构成
+    const avgBreakdown = {
+      fossilFuels: 0,
+      mobileSources: 0,
+      electricity: 0,
+      heat: 0,
+    };
+    
+    validComparisonData.forEach(item => {
+      const breakdown = item.calculatedEmissions?.breakdown || {};
+      avgBreakdown.fossilFuels += breakdown.fossilFuels || 0;
+      avgBreakdown.mobileSources += breakdown.mobileSources || 0;
+      avgBreakdown.electricity += breakdown.electricity || 0;
+      avgBreakdown.heat += breakdown.heat || 0;
+    });
+
+    // 计算平均值
+    const count = validComparisonData.length;
+    if (count > 0) {
+      Object.keys(avgBreakdown).forEach(key => {
+        avgBreakdown[key] = avgBreakdown[key] / count;
+      });
+    }
+
+    // 并排显示两个饼图
+    return (
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={6}>
+          <ReactECharts option={generatePieOption('本单位', data)} />
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <ReactECharts option={generatePieOption('同级别单位平均', avgBreakdown)} />
+        </Grid>
+      </Grid>
+    );
+  };
+
+  return compareMode ? renderComparisonChart() : 
+         <ReactECharts option={generatePieOption('本单位排放构成', data)} />;
+};
+
+
+================================================================================
+3. IntensityBarChart.jsx - 排放强度柱状图
+================================================================================
+
+const IntensityBarChart = ({ recordData, comparisonData, compareMode }) => {
+  const { perCapita, perArea } = recordData;
+
+  // 单图表模式：显示人均排放和单位面积排放
+  const renderSingleChart = () => {
+    const chartData = [
+      { value: perCapita?.toFixed(4) || 0, name: '人均排放 (tCO₂/人)' },
+      { value: perArea?.toFixed(4) || 0, name: '单位面积排放 (tCO₂/m²)' },
+    ];
+
+    const option = {
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      xAxis: {
+        type: 'category',
+        data: chartData.map(d => d.name) // X轴：指标名称
+      },
+      yAxis: { type: 'value' },
+      series: [{
+        name: '排放强度',
+        type: 'bar',
+        data: chartData.map(d => d.value),
+        barWidth: '60%',
+      }]
+    };
+    return <ReactECharts option={option} />;
+  };
+
+  // 对比模式：显示多个单位的排放强度对比
+  const renderComparisonChart = () => {
+    const validComparisonData = comparisonData.filter(
+      d => d && d.calculatedEmissions && d.calculatedEmissions.intensity
+    );
+    
+    const allData = [
+      { ...recordData, regionName: recordData.regionName || '本单位' },
+      ...validComparisonData.map(d => ({
+        ...(d.calculatedEmissions?.intensity || {}), 
+        regionName: d.regionName || d.regionCode || '未知区域'
+      }))
+    ];
+
+    // 按数值降序排列
+    const personIntensityData = allData.map(d => ({
+      name: d.regionName,
+      value: d.perCapita?.toFixed(4) || 0,
+    })).sort((a, b) => b.value - a.value);
+
+    const areaIntensityData = allData.map(d => ({
+      name: d.regionName,
+      value: d.perArea?.toFixed(4) || 0,
+    })).sort((a, b) => b.value - a.value);
+
+    // 并排显示两个图表
+    return (
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={6}>
+          <ReactECharts option={{
+            title: { text: '人均排放对比' },
+            xAxis: { type: 'category', data: personIntensityData.map(d => d.name) },
+            yAxis: { type: 'value' },
+            series: [{ type: 'bar', data: personIntensityData.map(d => d.value) }]
+          }} />
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <ReactECharts option={{
+            title: { text: '单位面积排放对比' },
+            xAxis: { type: 'category', data: areaIntensityData.map(d => d.name) },
+            yAxis: { type: 'value' },
+            series: [{ type: 'bar', data: areaIntensityData.map(d => d.value) }]
+          }} />
+        </Grid>
+      </Grid>
+    );
+  };
+
+  return compareMode ? renderComparisonChart() : renderSingleChart();
+};
+
+
+================================================================================
+4. YearlyEmissionBarChart.jsx - 年度排放量柱状图
+================================================================================
+
+const YearlyEmissionBarChart = ({ yearlyData, comparisonData, compareMode, currentYear }) => {
+  // 年度趋势模式：堆叠柱状图 + 折线图
+  const renderYearlyTrendChart = () => {
+    const validData = yearlyData.filter(d => d && d.calculatedEmissions);
+    const sortedData = [...validData].sort((a, b) => (a.year || 0) - (b.year || 0));
+
+    const option = {
+      xAxis: { 
+        type: 'category', 
+        data: sortedData.map(d => `${d.regionName || ''}/${d.year || ''}`),
+        axisLabel: { rotate: 30 } // X轴标签旋转30度
+      },
+      yAxis: { type: 'value', name: 'tCO₂' },
+      series: [
+        {
+          name: '直接排放',
+          type: 'bar',
+          stack: 'total', // 堆叠
+          data: sortedData.map(d => {
+            const breakdown = d.calculatedEmissions?.breakdown || {};
+            // 直接排放 = 化石燃料 + 移动源
+            return (breakdown.fossilFuels || 0) + (breakdown.mobileSources || 0);
+          })
+        },
+        {
+          name: '间接排放',
+          type: 'bar',
+          stack: 'total',
+          data: sortedData.map(d => {
+            const breakdown = d.calculatedEmissions?.breakdown || {};
+            // 间接排放 = 外购电力 + 外购热力
+            return (breakdown.electricity || 0) + (breakdown.heat || 0);
+          })
+        },
+        {
+          name: '总排放',
+          type: 'line', // 折线图显示总排放
+          data: sortedData.map(d => d.calculatedEmissions?.totalEmissions || 0),
+        }
+      ]
+    };
+    return <ReactECharts option={option} />;
+  };
+
+  // 对比模式：显示指定年份多个单位的对比
+  const renderComparisonChart = () => {
+    const currentYearData = yearlyData.find(d => d && d.year === currentYear);
+    const validComparisonData = comparisonData.filter(d => d && d.calculatedEmissions);
+    const allData = [
+      { ...currentYearData, regionName: currentYearData.regionName || '本单位' }, 
+      ...validComparisonData
+    ];
+    
+    const option = {
+      xAxis: {
+        type: 'category',
+        data: allData.map(d => d.regionName || d.regionCode || '未知区域'),
+        axisLabel: { rotate: 30 }
+      },
+      yAxis: { type: 'value', name: 'tCO₂' },
+      series: [
+        {
+          name: '直接排放',
+          type: 'bar',
+          stack: 'total',
+          data: allData.map(d => {
+            const breakdown = d.calculatedEmissions?.breakdown || {};
+            return (breakdown.fossilFuels || 0) + (breakdown.mobileSources || 0);
+          })
+        },
+        {
+          name: '间接排放',
+          type: 'bar',
+          stack: 'total',
+          data: allData.map(d => {
+            const breakdown = d.calculatedEmissions?.breakdown || {};
+            return (breakdown.electricity || 0) + (breakdown.heat || 0);
+          })
+        },
+        {
+          name: '总排放',
+          type: 'bar', // 对比模式用柱状图
+          data: allData.map(d => d.calculatedEmissions?.totalEmissions || 0),
+        }
+      ]
+    };
+    return <ReactECharts option={option} />;
+  };
+
+  return compareMode ? renderComparisonChart() : renderYearlyTrendChart();
+};
+
+
+================================================================================
+5. AnnualChangeLineChart.jsx - 年均变化率折线图
+================================================================================
+
+const AnnualChangeLineChart = ({ yearlyData, compareMode }) => {
+  // 需要至少2年的数据才能计算变化率
+  if (!yearlyData || yearlyData.length < 2) {
+    return <Typography>提交至少两年的数据后，将在此处显示年变化率图表。</Typography>;
+  }
+
+  const validData = yearlyData.filter(
+    d => d && d.calculatedEmissions && d.calculatedEmissions.totalEmissions !== undefined
+  );
+  
+  if (validData.length < 2) {
+    return <Typography>提交至少两年的有效数据后，将在此处显示年变化率图表。</Typography>;
+  }
+
+  const sortedData = [...validData].sort((a, b) => (a.year || 0) - (b.year || 0));
+
+  // 计算年变化率：(当年 - 上年) / 上年 * 100
+  const chartData = [];
+  for (let i = 1; i < sortedData.length; i++) {
+    const currentYearData = sortedData[i];
+    const previousYearData = sortedData[i - 1];
+    
+    const currentEmissions = currentYearData?.calculatedEmissions?.totalEmissions || 0;
+    const previousEmissions = previousYearData?.calculatedEmissions?.totalEmissions || 0;
+
+    let changeRate = 0;
+    if (previousEmissions > 0) {
+      changeRate = ((currentEmissions - previousEmissions) / previousEmissions) * 100;
+    }
+
+    chartData.push({
+      year: currentYearData?.year || '',
+      changeRate: changeRate.toFixed(2)
+    });
+  }
+
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      formatter: '{b}年<br/>变化率: {c}%',
+      textStyle: { color: '#fff' }
+    },
+    xAxis: {
+      type: 'category',
+      data: chartData.map(d => d.year),
+      axisLabel: { color: '#fff' }
+    },
+    yAxis: {
+      type: 'value',
+      name: '变化率 (%)',
+      nameTextStyle: { color: '#fff' },
+      axisLabel: {
+        formatter: '{value} %',
+        color: '#fff'
+      }
+    },
+    series: [{
+      data: chartData.map(d => d.changeRate),
+      type: 'line',
+      label: {
+        show: true,
+        formatter: '{c}%',
+        color: '#fff'
+      },
+      itemStyle: { color: '#66bb6a' },
+      lineStyle: { color: '#66bb6a' }
+    }]
+  };
+
+  return <ReactECharts option={option} />;
+};
+
+
+================================================================================
+6. EmissionMapChart.jsx - 排放地图
+================================================================================
+
+import React, { useEffect, useRef, useState } from 'react';
+import * as echarts from 'echarts';
+import geoJson from '../../../public/geo/region_150000.json';
+
+const EmissionMapChart = ({ data: carbonDataProp }) => {
+    const chartRef = useRef(null);
+    const chartInstanceRef = useRef(null);
+
+    useEffect(() => {
+        const renderMap = async () => {
+            let carbonData = carbonDataProp;
+            
+            // 如果没有传入数据，从API获取
+            if (!carbonData || !Array.isArray(carbonData) || carbonData.length === 0) {
+                const dataResponse = await axios.get('/api/carbon-data');
+                carbonData = dataResponse.data?.data || [];
+            }
+
+            // 初始化图表并注册地图
+            chartInstanceRef.current = echarts.init(chartRef.current);
+            const mapName = 'region_150000';
+            echarts.registerMap(mapName, geoJson);
+
+            // 转换数据格式：提取区域名称和人均排放强度
+            const mapSeriesData = carbonData
+                .filter(item => item && item.regionName)
+                .map(item => ({
+                    name: item.regionName.split('/')[0], // 提取区域名称（去掉年份）
+                    value: (item.calculatedEmissions?.intensity?.perCapita || 0).toFixed(2)
+                }));
+
+            const option = {
+                tooltip: { 
+                    trigger: 'item', 
+                    formatter: '{b}<br/>人均排放强度: {c} (tCO₂/人)' 
+                },
+                visualMap: {
+                    min: 0,
+                    max: Math.max(...mapSeriesData.map(d => parseFloat(d.value) || 0), 1),
+                    calculable: true,
+                    orient: 'vertical',
+                    left: 6,
+                    bottom: 68,
+                    inRange: { 
+                        // 颜色渐变：从浅到深
+                        color: ['#E0F3F8', '#ABD9E9', '#74ADD1', '#4575B4', '#313695'].reverse() 
+                    },
+                    textStyle: { color: '#fff' }
+                },
+                series: [{
+                    name: '人均排放强度',
+                    type: 'map',
+                    map: mapName,
+                    roam: true, // 允许缩放和平移
+                    label: { show: true, formatter: '{b}', color: '#fff' },
+                    emphasis: { 
+                        label: { show: true }, 
+                        itemStyle: { areaColor: '#FFD700' } // 高亮颜色
+                    },
+                    data: mapSeriesData
+                }]
+            };
+
+            chartInstanceRef.current.setOption(option);
+        };
+
+        renderMap();
+
+        // 监听窗口大小变化
+        const handleResize = () => {
+            chartInstanceRef.current?.resize();
+        };
+        window.addEventListener('resize', handleResize);
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            chartInstanceRef.current?.dispose();
+        };
+    }, [carbonDataProp]);
+
+    return <div ref={chartRef} style={{ width: '100%', height: '100%', minHeight: '500px' }} />;
+};
+
+
+================================================================================
+7. DonutChart.jsx - 环形图
+================================================================================
+
+import React, { useEffect, useRef } from 'react';
+import * as echarts from 'echarts';
+
+const DonutChart = ({ data }) => {
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    const chart = echarts.init(chartRef.current);
+    const option = {
+      tooltip: { trigger: 'item' },
+      legend: {
+        top: '5%',
+        left: 'center',
+        textStyle: { color: '#fff' }
+      },
+      series: [{
+        name: '排放源',
+        type: 'pie',
+        radius: ['40%', '70%'], // 内半径40%，外半径70%，形成环形
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 10,
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        label: {
+          show: false, // 默认不显示标签
+          position: 'center',
+          textStyle: { color: '#fff' }
+        },
+        emphasis: {
+          label: {
+            show: true, // 悬停时显示标签
+            fontSize: '20',
+            fontWeight: 'bold',
+            color: '#fff'
+          }
+        },
+        labelLine: { show: false },
+        data: data
+      }]
+    };
+    
+    chart.setOption(option);
+
+    // 响应式处理
+    const handleResize = () => chart.resize();
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.dispose();
+    };
+  }, [data]);
+
+  return <div ref={chartRef} style={{ width: '100%', height: '100%' }} />;
+};
+
+
+================================================================================
+8. StackedAreaChart.jsx - 堆叠面积图
+================================================================================
+
+const StackedAreaChart = ({ data }) => {
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    const chart = echarts.init(chartRef.current);
+    const option = {
+      tooltip: { trigger: 'axis' },
+      legend: {
+        data: ['化石燃料', '移动源', '外购电力', '外购热力'],
+        textStyle: { color: '#fff' }
+      },
+      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+      xAxis: [{
+        type: 'category',
+        boundaryGap: false, // 从第一个数据点开始
+        data: data.years,
+        axisLabel: { color: '#fff' }
+      }],
+      yAxis: [{ type: 'value', axisLabel: { color: '#fff' } }],
+      series: [
+        {
+          name: '化石燃料',
+          type: 'line',
+          stack: '总量', // 堆叠
+          areaStyle: {}, // 填充面积
+          data: data.fossilFuels
+        },
+        {
+          name: '移动源',
+          type: 'line',
+          stack: '总量',
+          areaStyle: {},
+          data: data.mobileSources
+        },
+        {
+          name: '外购电力',
+          type: 'line',
+          stack: '总量',
+          areaStyle: {},
+          data: data.electricity
+        },
+        {
+          name: '外购热力',
+          type: 'line',
+          stack: '总量',
+          areaStyle: {},
+          data: data.heat
+        }
+      ]
+    };
+    
+    chart.setOption(option);
+    
+    const handleResize = () => chart.resize();
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.dispose();
+    };
+  }, [data]);
+
+  return <div ref={chartRef} style={{ width: '100%', height: '100%' }} />;
+};
+
+
+================================================================================
+9. DualAxisChart.jsx - 双轴图表
+================================================================================
+
+const DualAxisChart = ({ data }) => {
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    const chart = echarts.init(chartRef.current);
+    const option = {
+      tooltip: { trigger: 'axis' },
+      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+      xAxis: [{
+        type: 'category',
+        data: data.years,
+        axisLabel: { color: '#fff' }
+      }],
+      yAxis: [
+        {
+          type: 'value',
+          name: '单位建筑面积碳排放',
+          axisLabel: {
+            formatter: '{value} kgCO₂/m²',
+            color: '#fff'
+          },
+          nameTextStyle: { color: '#fff' }
+        },
+        {
+          type: 'value',
+          name: '人均碳排放',
+          axisLabel: {
+            formatter: '{value} tCO₂/人',
+            color: '#fff'
+          },
+          nameTextStyle: { color: '#fff' }
+        }
+      ],
+      series: [
+        {
+          name: '单位建筑面积碳排放',
+          type: 'bar',
+          data: data.areaIntensity // 使用左侧Y轴（默认）
+        },
+        {
+          name: '人均碳排放',
+          type: 'line',
+          yAxisIndex: 1, // 使用右侧Y轴
+          data: data.perCapitaIntensity
+        }
+      ]
+    };
+    
+    chart.setOption(option);
+    
+    const handleResize = () => chart.resize();
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.dispose();
+    };
+  }, [data]);
+
+  return <div ref={chartRef} style={{ width: '100%', height: '100%' }} />;
+};
+
+
+================================================================================
+10. StackedBarChart.jsx - 堆叠柱状图
+================================================================================
+
+const StackedBarChart = ({ data }) => {
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    const chart = echarts.init(chartRef.current);
+    const option = {
+      tooltip: { trigger: 'axis' },
+      legend: {
+        data: ['化石燃料', '移动源', '外购电力', '外购热力'],
+        textStyle: { color: '#fff' },
+        top: 'bottom'
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '15%', // 为图例留出空间
+        top: '5%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'value', // 数值轴
+        axisLabel: { color: '#fff' }
+      },
+      yAxis: {
+        type: 'category', // 类别轴（年份）
+        data: data.years,
+        axisLabel: { color: '#fff' }
+      },
+      series: [
+        {
+          name: '化石燃料',
+          type: 'bar',
+          stack: '总量',
+          data: data.fossilFuels
+        },
+        {
+          name: '移动源',
+          type: 'bar',
+          stack: '总量',
+          data: data.mobileSources
+        },
+        {
+          name: '外购电力',
+          type: 'bar',
+          stack: '总量',
+          data: data.electricity
+        },
+        {
+          name: '外购热力',
+          type: 'bar',
+          stack: '总量',
+          data: data.heat
+        }
+      ]
+    };
+    
+    chart.setOption(option);
+    
+    const handleResize = () => chart.resize();
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.dispose();
+    };
+  }, [data]);
+
+  return <div ref={chartRef} style={{ width: '100%', height: '100%' }} />;
+};
+
+
+================================================================================
+11. LineChart.jsx - 折线图
+================================================================================
+
+const LineChart = ({ data }) => {
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    const chart = echarts.init(chartRef.current);
+    const option = {
+      tooltip: { trigger: 'axis' },
+      xAxis: {
+        type: 'category',
+        data: data.years,
+        axisLabel: { color: '#fff' }
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: {
+          formatter: '{value}%', // 百分比格式
+          color: '#fff'
+        }
+      },
+      series: [{
+        data: data.changeRates,
+        type: 'line',
+        markLine: {
+          data: [{ type: 'average', name: '平均值' }], // 标记平均值线
+          label: { color: '#fff' }
+        }
+      }]
+    };
+    
+    chart.setOption(option);
+    
+    const handleResize = () => chart.resize();
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.dispose();
+    };
+  }, [data]);
+
+  return <div ref={chartRef} style={{ width: '100%', height: '100%' }} />;
+};
+
+
+================================================================================
+核心数据计算逻辑总结
+================================================================================
+
+1. 排放构成计算
+   - 直接排放 = 化石燃料燃烧 + 移动源燃烧
+   - 间接排放 = 外购电力 + 外购热力
+   - 总排放 = 直接排放 + 间接排放
+
+2. 排放强度计算
+   - 人均排放 = 总排放量 / 人口数量 (tCO₂/人)
+   - 单位面积排放 = 总排放量 / 建筑面积 (tCO₂/m²)
+
+3. 年变化率计算
+   - 变化率 = (当年排放量 - 上年排放量) / 上年排放量 * 100%
+
+4. 对比数据平均计算
+   - 对多个单位的同一指标求和后除以单位数量
+
+================================================================================
+通用配置说明
+================================================================================
+
+- 图表库：ECharts (echarts-for-react 或原生 echarts)
+- 响应式：监听 window.resize 事件，自动调整图表尺寸
+- 颜色主题：主要文字颜色 #fff（白色），图表主色 #66bb6a（绿色）
+- 数据安全：使用可选链操作符和默认值防止 undefined 错误
+- 内存管理：组件卸载时清理事件监听器和图表实例
+
+================================================================================
+

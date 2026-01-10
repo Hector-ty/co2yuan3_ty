@@ -1,0 +1,11 @@
+.mobile-dashboard {
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+  min-height: 100vh;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .mobile-dashboard {
+    padding-bottom: 80px; /* 为底部导航留出空间 */
+  }
+}

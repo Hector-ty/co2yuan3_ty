@@ -1,0 +1,118 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+/* 碳排放数据监测系统 - styles.css */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+
+/* 碳排放数据监测系统 - styles.css */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+
+/* 移除与MUI深色主题冲突的全局样式 */
+/* body, .container, header, .card, .card-title, label, input, select, button, .btn-group, .btn-submit, .btn-reset, .visualization, .chart-title, .chart-container, .bar, .bar-label, .bar-value, .data-card, .data-value, .data-label, .trend, .carbon-intensity, .intensity-value, .compliance, footer, @media 响应式设计等相关样式都应由MUI主题或组件自身管理 */
+
+/* 仅保留必要的全局导入和重置 */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+/* 响应式设计 */
+@media (max-width: 900px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+    }
+    
+    .data-card {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        text-align: left;
+    }
+    
+    .data-card .card-title,
+    .data-card .data-value,
+    .data-card .trend {
+        grid-column: span 2;
+        text-align: center;
+    }
+}
+
+@media (max-width: 600px) {
+    .card {
+        padding: 20px;
+    }
+    
+    .btn-group {
+        grid-template-columns: 1fr;
+    }
+    
+    .data-card {
+        grid-template-columns: 1fr;
+    }
+    
+    header h1 {
+        font-size: 2rem;
+    }
+    
+    .data-value {
+        font-size: 2.4rem;
+    }
+    
+    .intensity-value {
+        font-size: 3rem;
+    }
+}
+
+/* 移动端适配样式 */
+@media (max-width: 768px) {
+    /* 确保页面在移动端可以正常滚动 */
+    html, body {
+        overflow-x: hidden;
+        width: 100%;
+        -webkit-text-size-adjust: 100%; /* 防止iOS自动调整字体大小 */
+        -ms-text-size-adjust: 100%;
+    }
+    
+    /* 移动端容器优化 */
+    .MuiContainer-root {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+    
+    /* 移动端表格横向滚动 */
+    .MuiTableContainer-root {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* 移动端卡片间距优化 */
+    .MuiCard-root {
+        margin-bottom: 16px;
+    }
+    
+    /* 移动端按钮组优化 */
+    .MuiButtonGroup-root {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .MuiButtonGroup-root .MuiButton-root {
+        width: 100%;
+        margin-bottom: 8px;
+    }
+}
+
+/* 确保初始渲染时正确应用移动端样式 */
+@media screen and (max-width: 768px) {
+    * {
+        -webkit-tap-highlight-color: transparent; /* 移除移动端点击高亮 */
+    }
+}
