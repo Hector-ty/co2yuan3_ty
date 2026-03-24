@@ -27,7 +27,7 @@ function TokenizerNode({
       showRun={false}
       showCopy={false}
     >
-      <NodeWrapper selected={selected} id={id}>
+      <NodeWrapper selected={selected}>
         <CommonHandle
           id={NodeHandleId.End}
           type="target"

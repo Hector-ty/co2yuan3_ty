@@ -40,7 +40,7 @@ export default function RetrievalTesting() {
                 <Plus /> Add New Test
               </Button> */}
             </div>
-            <div className="h-[calc(100vh-241px)] overflow-auto scrollbar-thin px-1">
+            <div className="h-[calc(100vh-241px)] overflow-auto scrollbar-thin">
               <TestingForm
                 loading={loading}
                 setValues={setValues}

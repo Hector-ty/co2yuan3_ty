@@ -4,7 +4,7 @@ const emissionFactorSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['solid', 'liquid', 'gas', 'indirect', 'mobile', 'fossil', 'fugitive'] // 排放因子类别，新增 fossil 和 fugitive
+    enum: ['solid', 'liquid', 'gas', 'indirect', 'mobile', 'fossil', 'fugitive', 'greenSink'] // 排放因子类别；greenSink=绿地碳汇因子
   },
   type: {
     type: String,

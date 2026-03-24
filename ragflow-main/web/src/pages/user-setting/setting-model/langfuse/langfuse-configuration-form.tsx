@@ -13,7 +13,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useFetchLangfuseConfig } from '@/hooks/use-user-setting-request';
+import { useFetchLangfuseConfig } from '@/hooks/user-setting-hooks';
 import { IModalProps } from '@/interfaces/common';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';

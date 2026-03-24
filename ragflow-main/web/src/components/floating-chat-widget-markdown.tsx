@@ -1,15 +1,12 @@
 import Image from '@/components/image';
 import SvgIcon from '@/components/svg-icon';
-
 import {
   useFetchDocumentThumbnailsByIds,
   useGetDocumentUrl,
-} from '@/hooks/use-document-request';
+} from '@/hooks/document-hooks';
 import { IReference, IReferenceChunk } from '@/interfaces/database/chat';
 import {
-  currentReg,
   preprocessLaTeX,
-  replaceTextByOldReg,
   replaceThinkToSection,
   showImage,
 } from '@/utils/chat';
@@ -35,7 +32,8 @@ import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import { visitParents } from 'unist-util-visit-parents';
-import styles from './floating-chat-widget-markdown.module.less';
+import { currentReg, replaceTextByOldReg } from '../pages/next-chats/utils';
+import styles from './floating-chat-widget-markdown.less';
 import { useIsDarkTheme } from './theme-provider';
 
 const getChunkIndex = (match: string) => Number(match.replace(/\[|\]/g, ''));

@@ -289,12 +289,12 @@ export const MultiSelect = React.forwardRef<
             {...props}
             onClick={handleTogglePopover}
             className={cn(
-              'flex w-full p-1 rounded-md border border-border-button min-h-10 h-auto placeholder:text-text-disabled items-center justify-between bg-bg-input hover:bg-bg-input [&_svg]:pointer-events-auto',
+              'flex w-full p-1 rounded-md border min-h-10 h-auto items-center justify-between bg-inherit hover:bg-inherit [&_svg]:pointer-events-auto',
               className,
             )}
           >
             {selectedValues.length > 0 ? (
-              <div className="flex justify-between items-center w-full group">
+              <div className="flex justify-between items-center w-full">
                 <div className="flex flex-wrap items-center">
                   {selectedValues?.slice(0, maxCount)?.map((value) => {
                     const option = flatOptions.find((o) => o.value === value);
@@ -348,9 +348,9 @@ export const MultiSelect = React.forwardRef<
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center justify-between ">
+                <div className="flex items-center justify-between">
                   <XIcon
-                    className="h-4 mx-2 cursor-pointer text-text-secondary hidden group-hover:block"
+                    className="h-4 mx-2 cursor-pointer text-muted-foreground"
                     onClick={(event) => {
                       event.stopPropagation();
                       handleClear();
@@ -358,17 +358,17 @@ export const MultiSelect = React.forwardRef<
                   />
                   <Separator
                     orientation="vertical"
-                    className="min-h-6 h-full hidden group-hover:flex"
+                    className="flex min-h-6 h-full"
                   />
-                  <ChevronDown className="h-4 mx-2 cursor-pointer text-text-secondary" />
+                  <ChevronDown className="h-4 mx-2 cursor-pointer text-muted-foreground" />
                 </div>
               </div>
             ) : (
               <div className="flex items-center justify-between w-full mx-auto">
-                <span className="text-sm text-text-secondary mx-3">
+                <span className="text-sm text-muted-foreground mx-3">
                   {placeholder}
                 </span>
-                <ChevronDown className="h-4 cursor-pointer text-text-secondary mx-2" />
+                <ChevronDown className="h-4 cursor-pointer text-muted-foreground mx-2" />
               </div>
             )}
           </Button>
@@ -378,17 +378,15 @@ export const MultiSelect = React.forwardRef<
           align="start"
           onEscapeKeyDown={() => setIsPopoverOpen(false)}
         >
-          <Command className="p-5 pb-8">
-            {options && options.length > 0 && (
-              <CommandInput
-                placeholder={t('common.search') + '...'}
-                onKeyDown={handleInputKeyDown}
-              />
-            )}
-            <CommandList className="mt-2">
+          <Command>
+            <CommandInput
+              placeholder={t('common.search') + '...'}
+              onKeyDown={handleInputKeyDown}
+            />
+            <CommandList>
               <CommandEmpty>No results found.</CommandEmpty>
               <CommandGroup>
-                {showSelectAll && options && options.length > 0 && (
+                {showSelectAll && (
                   <CommandItem
                     key="all"
                     onSelect={toggleAll}
@@ -439,9 +437,9 @@ export const MultiSelect = React.forwardRef<
                     })}
                   </CommandGroup>
                 ))}
+              <CommandSeparator />
               <CommandGroup>
-                <div className=" absolute bottom-1 left-1 right-1 flex items-center justify-between mx-5 bg-bg-base border-t border-border-button">
-                  <CommandSeparator />
+                <div className="flex items-center justify-between">
                   {selectedValues.length > 0 && (
                     <>
                       <CommandItem
@@ -456,14 +454,12 @@ export const MultiSelect = React.forwardRef<
                       />
                     </>
                   )}
-                  {options && options.length > 0 && (
-                    <CommandItem
-                      onSelect={() => setIsPopoverOpen(false)}
-                      className="flex-1 justify-center cursor-pointer max-w-full"
-                    >
-                      {t('common.close')}
-                    </CommandItem>
-                  )}
+                  <CommandItem
+                    onSelect={() => setIsPopoverOpen(false)}
+                    className="flex-1 justify-center cursor-pointer max-w-full"
+                  >
+                    {t('common.close')}
+                  </CommandItem>
                 </div>
               </CommandGroup>
             </CommandList>

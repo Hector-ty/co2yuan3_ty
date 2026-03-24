@@ -1,0 +1,17 @@
+{
+  "miniprogramRoot": "./",
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true
+  },
+  "compileType": "miniprogram",
+  "appid": "YOUR_MINIAPP_APPID_HERE",
+  "projectname": "co2yuan-miniapp",
+  "description": "CO2 碳排放管理微信小程序前端（与 Web 端共享后端）",
+  "packOptions": {
+    "ignore": []
+  }
+}

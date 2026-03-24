@@ -1,6 +1,6 @@
 import { IRagNode } from '@/interfaces/database/flow';
 import { NodeProps, Position } from '@xyflow/react';
-import { PropsWithChildren, memo } from 'react';
+import { memo } from 'react';
 import { NodeHandleId } from '../../constant';
 import { needsSingleStepDebugging, showCopyIcon } from '../../utils';
 import { CommonHandle, LeftEndHandle } from './handle';
@@ -9,15 +9,12 @@ import NodeHeader from './node-header';
 import { NodeWrapper } from './node-wrapper';
 import { ToolBar } from './toolbar';
 
-type RagNodeProps = NodeProps<IRagNode> & PropsWithChildren;
-
 function InnerRagNode({
   id,
   data,
   isConnectable = true,
   selected,
-  children,
-}: RagNodeProps) {
+}: NodeProps<IRagNode>) {
   return (
     <ToolBar
       selected={selected}
@@ -26,7 +23,7 @@ function InnerRagNode({
       showRun={needsSingleStepDebugging(data.label)}
       showCopy={showCopyIcon(data.label)}
     >
-      <NodeWrapper selected={selected} id={id}>
+      <NodeWrapper selected={selected}>
         <LeftEndHandle></LeftEndHandle>
         <CommonHandle
           type="source"
@@ -38,7 +35,6 @@ function InnerRagNode({
           isConnectableEnd={false}
         ></CommonHandle>
         <NodeHeader id={id} name={data.name} label={data.label}></NodeHeader>
-        {children}
       </NodeWrapper>
     </ToolBar>
   );

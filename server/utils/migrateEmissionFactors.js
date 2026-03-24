@@ -16,9 +16,9 @@ const newSystemSeedData = {
     { fuelTypeCn: "焦炉煤气", fuelTypeEn: "cokeOvenGas", emissionFactor: "8.57", unit: "tCO₂/10⁴Nm³", gwp: "-" },
     { fuelTypeCn: "管道煤气", fuelTypeEn: "pipelineGas", emissionFactor: "7.00", unit: "tCO₂/10⁴Nm³", gwp: "-" },
     { fuelTypeCn: "天然气", fuelTypeEn: "naturalGas", emissionFactor: "21.62", unit: "tCO₂/10⁴Nm³", gwp: "-" },
+    { fuelTypeCn: "燃料油", fuelTypeEn: "fuelOil", emissionFactor: "3.05", unit: "tCO₂/t", gwp: "-" },
     { fuelTypeCn: "汽油", fuelTypeEn: "gasoline", emissionFactor: "3.04", unit: "tCO₂/t", gwp: "-" },
     { fuelTypeCn: "柴油", fuelTypeEn: "diesel", emissionFactor: "3.14", unit: "tCO₂/t", gwp: "-" },
-    { fuelTypeCn: "燃料油", fuelTypeEn: "fuelOil", emissionFactor: "3.05", unit: "tCO₂/t", gwp: "-" },
     { fuelTypeCn: "一般煤油", fuelTypeEn: "kerosene", emissionFactor: "3.16", unit: "tCO₂/t", gwp: "-" },
     { fuelTypeCn: "液化石油气", fuelTypeEn: "lpg", emissionFactor: "2.92", unit: "tCO₂/t", gwp: "-" },
     { fuelTypeCn: "液化天然气", fuelTypeEn: "lng", emissionFactor: "2.59", unit: "tCO₂/t", gwp: "-" },
@@ -131,16 +131,67 @@ function convertToExistingFormat(data, category, type) {
 
 /**
  * 迁移新系统的种子数据
+ * 注意：此函数会检查是否已存在相同规范名称的记录，避免创建重复数据
+ * 由于现有数据使用中文名称，而迁移数据使用英文名称，需要建立对应关系
  */
 async function migrateNewSystemData() {
   try {
     console.log('开始迁移新系统的排放因子数据...');
     
-    const operations = [];
+    // 获取所有现有记录，用于检查重复
+    const existingFactors = await EmissionFactor.find({});
     
-    // 处理化石燃料
+    // 建立中文名称到规范名称的映射
+    const nameMapping = {
+      // 固体燃料
+      '无烟煤': 'anthracite',
+      '烟煤': 'bituminousCoal',
+      '褐煤': 'lignite',
+      // 液体燃料
+      '燃料油': 'fuelOil',
+      '汽油': 'gasoline',
+      '柴油': 'diesel',
+      '煤油': 'kerosene',
+      '液化石油气': 'lpg',
+      '液化天然气': 'lng',
+      // 气体燃料
+      '天然气': 'naturalGas',
+      '焦炉煤气': 'cokeOvenGas',
+      '管道煤气': 'pipelineGas',
+      // 逸散排放
+      'CO2': 'CO2_ext', // CO2 对应 CO2_ext
+      'HFC-227ea': 'FM200', // HFC-227ea 对应 FM200
+      // 间接排放
+      '外购电力': 'electricity',
+      '外购热力': 'heat'
+    };
+    
+    // 建立现有记录的规范名称集合（包括原始名称和映射后的规范名称）
+    const existingCanonicalNames = new Set();
+    existingFactors.forEach(factor => {
+      const originalName = factor.name;
+      const canonicalName = canonicalizeFactorName(originalName);
+      existingCanonicalNames.add(canonicalName);
+      // 如果存在映射关系，也添加到集合中
+      if (nameMapping[originalName]) {
+        existingCanonicalNames.add(nameMapping[originalName]);
+      }
+    });
+    
+    console.log(`现有排放因子数量: ${existingFactors.length}`);
+    
+    const operations = [];
+    let skippedCount = 0;
+    
+    // 处理化石燃料 - 检查是否已存在对应的 solid/liquid/gas 类别记录
     const fossilFactors = convertToExistingFormat(newSystemSeedData.fossilFuels, 'fossil');
     fossilFactors.forEach(factor => {
+      const canonicalName = canonicalizeFactorName(factor.name);
+      if (existingCanonicalNames.has(canonicalName)) {
+        console.log(`跳过重复的化石燃料: ${factor.name} (规范名称: ${canonicalName})`);
+        skippedCount++;
+        return;
+      }
       operations.push({
         updateOne: {
           filter: { name: factor.name, category: 'fossil' },
@@ -152,9 +203,26 @@ async function migrateNewSystemData() {
       });
     });
     
-    // 处理逸散排放
+    // 处理逸散排放 - 检查是否已存在
     const fugitiveFactors = convertToExistingFormat(newSystemSeedData.fugitiveEmissions, 'fugitive');
     fugitiveFactors.forEach(factor => {
+      const canonicalName = canonicalizeFactorName(factor.name);
+      // 特殊处理：CO2_ext 对应 CO2, FM200 对应 HFC-227ea
+      if (canonicalName === 'CO2_ext' && existingCanonicalNames.has('CO2')) {
+        console.log(`跳过重复的逸散排放: ${factor.name} (对应现有记录: CO2)`);
+        skippedCount++;
+        return;
+      }
+      if (canonicalName === 'FM200' && existingCanonicalNames.has('HFC-227ea')) {
+        console.log(`跳过重复的逸散排放: ${factor.name} (对应现有记录: HFC-227ea)`);
+        skippedCount++;
+        return;
+      }
+      if (existingCanonicalNames.has(canonicalName)) {
+        console.log(`跳过重复的逸散排放: ${factor.name} (规范名称: ${canonicalName})`);
+        skippedCount++;
+        return;
+      }
       operations.push({
         updateOne: {
           filter: { name: factor.name, category: 'fugitive' },
@@ -166,9 +234,26 @@ async function migrateNewSystemData() {
       });
     });
     
-    // 处理间接排放
+    // 处理间接排放 - 检查是否已存在（通过中文名称映射）
     const indirectFactors = convertToExistingFormat(newSystemSeedData.indirectEmissions, 'indirect');
     indirectFactors.forEach(factor => {
+      const canonicalName = canonicalizeFactorName(factor.name);
+      // electricity 对应 "外购电力", heat 对应 "外购热力"
+      if (canonicalName === 'electricity' && existingCanonicalNames.has('electricity')) {
+        console.log(`跳过重复的间接排放: ${factor.name} (对应现有记录: 外购电力)`);
+        skippedCount++;
+        return;
+      }
+      if (canonicalName === 'heat' && existingCanonicalNames.has('heat')) {
+        console.log(`跳过重复的间接排放: ${factor.name} (对应现有记录: 外购热力)`);
+        skippedCount++;
+        return;
+      }
+      if (existingCanonicalNames.has(canonicalName)) {
+        console.log(`跳过重复的间接排放: ${factor.name} (规范名称: ${canonicalName})`);
+        skippedCount++;
+        return;
+      }
       operations.push({
         updateOne: {
           filter: { name: factor.name, category: 'indirect' },
@@ -182,17 +267,19 @@ async function migrateNewSystemData() {
     
     if (operations.length > 0) {
       const result = await EmissionFactor.bulkWrite(operations, { ordered: false });
-      console.log(`迁移完成！新增 ${result.upsertedCount || 0} 条记录`);
+      console.log(`迁移完成！新增 ${result.upsertedCount || 0} 条记录，跳过 ${skippedCount} 条重复记录`);
       return {
         success: true,
         insertedCount: result.upsertedCount || 0,
-        message: `迁移完成，新增 ${result.upsertedCount || 0} 条记录`
+        skippedCount: skippedCount,
+        message: `迁移完成，新增 ${result.upsertedCount || 0} 条记录，跳过 ${skippedCount} 条重复记录`
       };
     } else {
       return {
         success: true,
         insertedCount: 0,
-        message: '没有需要迁移的数据'
+        skippedCount: skippedCount,
+        message: `没有需要迁移的数据，所有记录都已存在（跳过 ${skippedCount} 条重复记录）`
       };
     }
   } catch (error) {

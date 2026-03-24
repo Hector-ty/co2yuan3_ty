@@ -1,0 +1,26 @@
+.page {
+  min-height: 100vh;
+}
+
+.desc-text {
+  font-size: 26rpx;
+  color: #555555;
+  margin-bottom: 32rpx;
+}
+
+.export-btn {
+  margin-top: 16rpx;
+}
+
+.error-text {
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: #d32f2f;
+}
+
+.success-text {
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: #2e7d32;
+}
+

@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactECharts from 'echarts-for-react';
 import { Box, Typography } from '@mui/material'; // 使用MUI组件
+import { formatNumber } from '../../utils/formatNumber';
 
 const AnnualChangeLineChart = ({ yearlyData, compareMode }) => {
   if (compareMode) {
@@ -81,12 +82,32 @@ const AnnualChangeLineChart = ({ yearlyData, compareMode }) => {
   const option = {
     tooltip: {
       trigger: 'axis',
+      backgroundColor: '#fff',
+      borderColor: '#ccc',
+      borderWidth: 1,
       formatter: function(params) {
-        const param = params[0];
-        return `${param.name}年<br/>变化率: ${param.value.toFixed(2)}%`;
+        try {
+          if (!params || !Array.isArray(params) || params.length === 0) {
+            return '';
+          }
+          const param = params[0];
+          if (!param) return '';
+          const name = param.name || '';
+          let value = 0;
+          if (typeof param.value === 'number') {
+            value = param.value;
+          } else if (param.value !== null && param.value !== undefined) {
+            value = Number(param.value) || 0;
+          }
+          return `${name}年<br/>变化率: ${formatNumber(value)}%`;
+        } catch (error) {
+          console.error('[Tooltip] 格式化错误:', error);
+          return '';
+        }
       },
-      textStyle: { // 确保tooltip文字颜色为白色
-        color: '#fff'
+      textStyle: { // tooltip文字颜色为深色
+        color: '#333',
+        fontSize: 12
       }
     },
     grid: { // 设置正方形布局的grid边距
@@ -131,8 +152,8 @@ const AnnualChangeLineChart = ({ yearlyData, compareMode }) => {
           show: true,
           formatter: function(params) {
             const value = params.value;
-            if (!isFinite(value)) return '0.00%';
-            return value.toFixed(2) + '%'; // 格式化显示
+            if (!isFinite(value)) return formatNumber(0) + '%';
+            return formatNumber(value) + '%'; // 格式化显示
           },
           color: '#fff' // 确保数据标签文字颜色为白色
         },

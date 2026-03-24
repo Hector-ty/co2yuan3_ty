@@ -1,0 +1,21 @@
+<view class="page">
+  <view class="card">
+    <view class="card-title">基础数据填报</view>
+    <view class="form-item">
+      <text class="label">年份</text>
+      <input class="input" type="number" placeholder="例如 2024" value="{{year}}" bindinput="onYearChange" />
+    </view>
+    <view class="form-item">
+      <text class="label">行政区划代码</text>
+      <input class="input" placeholder="例如 150102" value="{{regionCode}}" bindinput="onRegionChange" />
+    </view>
+    <view class="form-item">
+      <text class="label">活动数据（JSON）</text>
+      <textarea class="textarea" placeholder='粘贴或输入活动数据 JSON，结构参考 Web 端导出示例' value="{{activityDataText}}" bindinput="onActivityChange" />
+    </view>
+    <button class="primary-btn submit-btn" loading="{{loading}}" bindtap="onSubmit">提交</button>
+    <view wx:if="{{error}}" class="error-text">{{error}}</view>
+    <view wx:if="{{success}}" class="success-text">{{success}}</view>
+  </view>
+</view>
+

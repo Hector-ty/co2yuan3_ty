@@ -19,7 +19,7 @@ import time
 from abc import ABC
 import requests
 from agent.tools.base import ToolMeta, ToolParamBase, ToolBase
-from common.connection_utils import timeout
+from api.utils.api_utils import timeout
 
 
 class SearXNGParam(ToolParamBase):
@@ -79,9 +79,6 @@ class SearXNG(ToolBase, ABC):
 
     @timeout(int(os.environ.get("COMPONENT_EXEC_TIMEOUT", 12)))
     def _invoke(self, **kwargs):
-        if self.check_if_canceled("SearXNG processing"):
-            return
-
         # Gracefully handle try-run without inputs
         query = kwargs.get("query")
         if not query or not isinstance(query, str) or not query.strip():
@@ -96,9 +93,6 @@ class SearXNG(ToolBase, ABC):
 
         last_e = ""
         for _ in range(self._param.max_retries+1):
-            if self.check_if_canceled("SearXNG processing"):
-                return
-
             try:
                 search_params = {
                     'q': query,
@@ -116,9 +110,6 @@ class SearXNG(ToolBase, ABC):
                 )
                 response.raise_for_status()
 
-                if self.check_if_canceled("SearXNG processing"):
-                    return
-
                 data = response.json()
 
                 if not data or not isinstance(data, dict):
@@ -130,9 +121,6 @@ class SearXNG(ToolBase, ABC):
 
                 results = results[:self._param.top_n]
 
-                if self.check_if_canceled("SearXNG processing"):
-                    return
-
                 self._retrieve_chunks(results,
                                       get_title=lambda r: r.get("title", ""),
                                       get_url=lambda r: r.get("url", ""),
@@ -142,16 +130,10 @@ class SearXNG(ToolBase, ABC):
                 return self.output("formalized_content")
 
             except requests.RequestException as e:
-                if self.check_if_canceled("SearXNG processing"):
-                    return
-
                 last_e = f"Network error: {e}"
                 logging.exception(f"SearXNG network error: {e}")
                 time.sleep(self._param.delay_after_error)
             except Exception as e:
-                if self.check_if_canceled("SearXNG processing"):
-                    return
-
                 last_e = str(e)
                 logging.exception(f"SearXNG error: {e}")
                 time.sleep(self._param.delay_after_error)

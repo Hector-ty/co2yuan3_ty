@@ -1,7 +1,4 @@
-import {
-  ConfirmDeleteDialog,
-  ConfirmDeleteDialogNode,
-} from '@/components/confirm-delete-dialog';
+import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,20 +41,9 @@ export function SearchDropdown({
           {t('common.rename')} <PenLine />
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <ConfirmDeleteDialog
-          onOk={handleDelete}
-          title={t('deleteModal.delSearch')}
-          content={{
-            node: (
-              <ConfirmDeleteDialogNode
-                avatar={{ avatar: dataset.avatar, name: dataset.name }}
-                name={dataset.name}
-              />
-            ),
-          }}
-        >
+        <ConfirmDeleteDialog onOk={handleDelete}>
           <DropdownMenuItem
-            className="text-state-error"
+            className="text-text-delete-red"
             onSelect={(e) => {
               e.preventDefault();
             }}

@@ -196,13 +196,17 @@ function getSystemPrompt() {
 
 /**
  * 调用 Ollama API 进行聊天（非流式）
+ * @param {Array} messages - 消息数组
+ * @param {Object} options - 可选，{ timeout: 毫秒 }
  */
-async function chatWithOllama(messages) {
+async function chatWithOllama(messages, options = {}) {
     // 如果未连接，先尝试连接
     if (!connectionStatus.connected) {
         await checkOllamaConnection();
     }
-    
+
+    const timeout = options.timeout ?? 120000;
+
     try {
         const ollamaChatUrl = `${OLLAMA_BASE_URL}/api/chat`;
         
@@ -222,7 +226,7 @@ async function chatWithOllama(messages) {
         };
         
         const response = await axios.post(ollamaChatUrl, requestData, {
-            timeout: 120000 // 120秒超时
+            timeout
         });
         
         // 更新连接状态为成功

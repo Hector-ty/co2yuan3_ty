@@ -1,10 +1,6 @@
+import { ReactComponent as AssistantIcon } from '@/assets/svg/assistant.svg';
 import { MessageType } from '@/constants/chat';
-import {
-  IMessage,
-  IReferenceChunk,
-  IReferenceObject,
-  UploadResponseDataType,
-} from '@/interfaces/database/chat';
+import { IReferenceChunk, IReferenceObject } from '@/interfaces/database/chat';
 import classNames from 'classnames';
 import {
   PropsWithChildren,
@@ -21,26 +17,22 @@ import { INodeEvent, MessageEventType } from '@/hooks/use-send-message';
 import { cn } from '@/lib/utils';
 import { AgentChatContext } from '@/pages/agent/context';
 import { WorkFlowTimeline } from '@/pages/agent/log-sheet/workflow-timeline';
+import { IMessage } from '@/pages/chat/interface';
 import { isEmpty } from 'lodash';
 import { Atom, ChevronDown, ChevronUp } from 'lucide-react';
 import MarkdownContent from '../next-markdown-content';
-import {
-  PDFDownloadButton,
-  extractPDFDownloadInfo,
-  removePDFDownloadInfo,
-} from '../pdf-download-button';
 import { RAGFlowAvatar } from '../ragflow-avatar';
-import SvgIcon from '../svg-icon';
 import { useTheme } from '../theme-provider';
 import { Button } from '../ui/button';
 import { AssistantGroupButton, UserGroupButton } from './group-button';
-import styles from './index.module.less';
+import styles from './index.less';
 import { ReferenceDocumentList } from './reference-document-list';
-import { ReferenceImageList } from './reference-image-list';
 import { UploadedMessageFiles } from './uploaded-message-files';
 
 interface IProps
-  extends Partial<IRemoveMessageById>, IRegenerateMessage, PropsWithChildren {
+  extends Partial<IRemoveMessageById>,
+    IRegenerateMessage,
+    PropsWithChildren {
   item: IMessage;
   conversationId?: string;
   currentEventListWithoutMessageById?: (messageId: string) => INodeEvent[];
@@ -100,20 +92,6 @@ function MessageItem({
     return Object.values(docs);
   }, [reference?.doc_aggs]);
 
-  // Extract PDF download info from message content
-  const pdfDownloadInfo = useMemo(
-    () => extractPDFDownloadInfo(item.content),
-    [item.content],
-  );
-
-  // If we have PDF download info, extract the remaining text
-  const messageContent = useMemo(() => {
-    if (!pdfDownloadInfo) return item.content;
-
-    // Remove the JSON part from the content to avoid showing it
-    return removePDFDownloadInfo(item.content, pdfDownloadInfo);
-  }, [item.content, pdfDownloadInfo]);
-
   const handleRegenerateMessage = useCallback(() => {
     regenerateMessage?.(item);
   }, [regenerateMessage, item]);
@@ -133,51 +111,6 @@ function MessageItem({
     },
     [currentEventListWithoutMessageById, loading],
   );
-
-  const renderContent = useCallback(() => {
-    /* Show message content if there's any text besides the download */
-
-    if (pdfDownloadInfo) {
-      return null;
-    }
-
-    return (
-      <div
-        className={cn({
-          [theme === 'dark' ? styles.messageTextDark : styles.messageText]:
-            isAssistant,
-          [styles.messageUserText]: !isAssistant,
-          'bg-bg-card': !isAssistant,
-        })}
-      >
-        {item.data ? (
-          children
-        ) : sendLoading && isEmpty(messageContent) ? (
-          <>{!isShare && 'running...'}</>
-        ) : (
-          <MarkdownContent
-            loading={loading}
-            content={messageContent}
-            reference={reference}
-            clickDocumentButton={clickDocumentButton}
-          ></MarkdownContent>
-        )}
-      </div>
-    );
-  }, [
-    children,
-    clickDocumentButton,
-    isAssistant,
-    isShare,
-    item.data,
-    loading,
-    messageContent,
-    pdfDownloadInfo,
-    reference,
-    sendLoading,
-    theme,
-  ]);
-
   return (
     <div
       className={classNames(styles.messageItem, {
@@ -206,11 +139,7 @@ function MessageItem({
                 isPerson
               />
             ) : (
-              <SvgIcon
-                name={'assistant'}
-                width={'100%'}
-                className={cn('size-10 fill-current')}
-              ></SvgIcon>
+              <AssistantIcon />
             ))}
           <section className="flex-col gap-2 flex-1">
             <div className="flex justify-between items-center">
@@ -242,7 +171,6 @@ function MessageItem({
                         audioBinary={item.audio_binary}
                         showLoudspeaker={showLoudspeaker}
                         showLog={showLog}
-                        attachment={item.attachment}
                       ></AssistantGroupButton>
                     )}
                     {!isShare && (
@@ -254,7 +182,6 @@ function MessageItem({
                         audioBinary={item.audio_binary}
                         showLoudspeaker={showLoudspeaker}
                         showLog={showLog}
-                        attachment={item.attachment}
                       ></AssistantGroupButton>
                     )}
                   </>
@@ -287,24 +214,28 @@ function MessageItem({
                   />
                 </div>
               )}
-
-            {/* Show PDF download button if download info is present */}
-            {pdfDownloadInfo && (
-              <PDFDownloadButton
-                downloadInfo={pdfDownloadInfo}
-                className="mb-2"
-              />
-            )}
-
-            {renderContent()}
-
-            {isAssistant && (
-              <ReferenceImageList
-                referenceChunks={reference?.chunks}
-                messageContent={messageContent}
-              ></ReferenceImageList>
-            )}
-
+            <div
+              className={cn({
+                [theme === 'dark'
+                  ? styles.messageTextDark
+                  : styles.messageText]: isAssistant,
+                [styles.messageUserText]: !isAssistant,
+                'bg-bg-card': !isAssistant,
+              })}
+            >
+              {item.data ? (
+                children
+              ) : sendLoading && isEmpty(item.content) ? (
+                <>{!isShare && 'running...'}</>
+              ) : (
+                <MarkdownContent
+                  loading={loading}
+                  content={item.content}
+                  reference={reference}
+                  clickDocumentButton={clickDocumentButton}
+                ></MarkdownContent>
+              )}
+            </div>
             {isAssistant && referenceDocuments.length > 0 && (
               <ReferenceDocumentList
                 list={referenceDocuments}
@@ -312,36 +243,8 @@ function MessageItem({
             )}
 
             {isUser && (
-              <UploadedMessageFiles
-                files={item.files as File[] | UploadResponseDataType[]}
-              ></UploadedMessageFiles>
+              <UploadedMessageFiles files={item.files}></UploadedMessageFiles>
             )}
-            {/* {isAssistant && item.attachment && item.attachment.doc_id && (
-              <div className="w-full flex items-center justify-end">
-                <Button
-                  variant="link"
-                  className="p-1 m-0 h-auto text-text-sub-title-invert"
-                  onClick={async () => {
-                    if (item.attachment?.doc_id) {
-                      try {
-                        const response = await downloadFile({
-                          docId: item.attachment.doc_id,
-                          ext: item.attachment.format,
-                        });
-                        const blob = new Blob([response.data], {
-                          type: response.data.type,
-                        });
-                        downloadFileFromBlob(blob, item.attachment.file_name);
-                      } catch (error) {
-                        console.error('Download failed:', error);
-                      }
-                    }
-                  }}
-                >
-                  <Download size={16} />
-                </Button>
-              </div>
-            )} */}
           </section>
         </div>
       </section>

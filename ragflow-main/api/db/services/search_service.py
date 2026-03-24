@@ -17,10 +17,10 @@ from datetime import datetime
 
 from peewee import fn
 
-from common.constants import StatusEnum
+from api.db import StatusEnum
 from api.db.db_models import DB, Search, User
 from api.db.services.common_service import CommonService
-from common.time_utils import current_timestamp, datetime_format
+from api.utils import current_timestamp, datetime_format
 
 
 class SearchService(CommonService):
@@ -28,13 +28,10 @@ class SearchService(CommonService):
 
     @classmethod
     def save(cls, **kwargs):
-        current_ts = current_timestamp()
-        current_date = datetime_format(datetime.now())
-
-        kwargs["create_time"] = current_ts
-        kwargs["create_date"] = current_date
-        kwargs["update_time"] = current_ts
-        kwargs["update_date"] = current_date
+        kwargs["create_time"] = current_timestamp()
+        kwargs["create_date"] = datetime_format(datetime.now())
+        kwargs["update_time"] = current_timestamp()
+        kwargs["update_date"] = datetime_format(datetime.now())
         obj = cls.model.create(**kwargs)
         return obj
 

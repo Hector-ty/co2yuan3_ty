@@ -19,7 +19,7 @@ import pytest
 from common import list_documents, update_document
 from configs import DOCUMENT_NAME_LIMIT, INVALID_API_TOKEN
 from libs.auth import RAGFlowHttpApiAuth
-from configs import DEFAULT_PARSER_CONFIG
+
 
 @pytest.mark.p1
 class TestAuthorization:
@@ -308,7 +308,14 @@ class TestUpdateDocumentParserConfig:
             ("naive", {}, 0, ""),
             (
                 "naive",
-                DEFAULT_PARSER_CONFIG,
+                {
+                    "chunk_token_num": 512,
+                    "layout_recognize": "DeepDOC",
+                    "html4excel": False,
+                    "delimiter": r"\n",
+                    "task_page_size": 12,
+                    "raptor": {"use_raptor": False},
+                },
                 0,
                 "",
             ),
@@ -412,14 +419,7 @@ class TestUpdateDocumentParserConfig:
                 "",
                 marks=pytest.mark.skip(reason="issues/6098"),
             ),
-            ("naive", {"raptor": {"use_raptor": {
-                "use_raptor": True,
-                "prompt": "Please summarize the following paragraphs. Be careful with the numbers, do not make things up. Paragraphs as following:\n      {cluster_content}\nThe above is the content you need to summarize.",
-                "max_token": 256,
-                "threshold": 0.1,
-                "max_cluster": 64,
-                "random_seed": 0,
-            },}}, 0, ""),
+            ("naive", {"raptor": {"use_raptor": True}}, 0, ""),
             ("naive", {"raptor": {"use_raptor": False}}, 0, ""),
             pytest.param(
                 "naive",
@@ -534,7 +534,14 @@ class TestUpdateDocumentParserConfig:
         if expected_code == 0:
             res = list_documents(HttpApiAuth, dataset_id, {"id": document_ids[0]})
             if parser_config == {}:
-                assert res["data"]["docs"][0]["parser_config"] == DEFAULT_PARSER_CONFIG
+                assert res["data"]["docs"][0]["parser_config"] == {
+                    "chunk_token_num": 512,
+                    "delimiter": r"\n",
+                    "html4excel": False,
+                    "layout_recognize": "DeepDOC",
+                    "raptor": {"use_raptor": False},
+                    "graphrag": {"use_graphrag": False},
+                }
             else:
                 for k, v in parser_config.items():
                     assert res["data"]["docs"][0]["parser_config"][k] == v

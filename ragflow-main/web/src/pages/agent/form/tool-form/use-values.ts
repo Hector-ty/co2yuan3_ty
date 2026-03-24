@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Operator } from '../../constant';
 import { useAgentToolInitialValues } from '../../hooks/use-agent-tool-initial-values';
 import useGraphStore from '../../store';
+import { getAgentNodeTools } from '../../utils';
 
 export enum SearchDepth {
   Basic = 'basic',
@@ -15,23 +16,22 @@ export enum Topic {
 }
 
 export function useValues() {
-  const {
-    clickedToolId,
-    clickedNodeId,
-    findUpstreamNodeById,
-    getAgentToolById,
-  } = useGraphStore();
-
+  const { clickedToolId, clickedNodeId, findUpstreamNodeById } = useGraphStore(
+    (state) => state,
+  );
   const { initializeAgentToolValues } = useAgentToolInitialValues();
 
   const values = useMemo(() => {
     const agentNode = findUpstreamNodeById(clickedNodeId);
-    const tool = getAgentToolById(clickedToolId, agentNode!);
-    const formData = tool?.params;
+    const tools = getAgentNodeTools(agentNode);
+
+    const formData = tools.find(
+      (x) => x.component_name === clickedToolId,
+    )?.params;
 
     if (isEmpty(formData)) {
       const defaultValues = initializeAgentToolValues(
-        (tool?.component_name || clickedNodeId) as Operator,
+        clickedNodeId as Operator,
       );
 
       return defaultValues;
@@ -44,7 +44,6 @@ export function useValues() {
     clickedNodeId,
     clickedToolId,
     findUpstreamNodeById,
-    getAgentToolById,
     initializeAgentToolValues,
   ]);
 

@@ -1,36 +1,26 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-
-    /* JSX support */
-    "jsx": "react-jsx",
-
     "baseUrl": ".",
+    "moduleResolution": "node",
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "paths": {
-      "@/*": ["src/*"],
-      "@parent/*": ["../src/*"]
+      "@@/*": ["src/.umi/*"],
+      "root/*": ["../*"]
     },
-
-    "types": ["vite/client", "node", "@testing-library/jest-dom"]
+    "types": [
+      "node",
+      "react",
+      "react-dom",
+      "jest",
+      "dompurify",
+      "lodash",
+      "react-copy-to-clipboard",
+      "react-syntax-highlighter",
+      "uuid",
+      "webpack-env"
+    ]
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src", "typings.d.ts", "externals.d.ts"]
 }

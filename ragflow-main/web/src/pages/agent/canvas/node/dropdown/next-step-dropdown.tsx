@@ -73,7 +73,6 @@ export function InnerNextStepDropdown({
                 <AccordionOperators
                   isCustomDropdown={true}
                   mousePosition={position}
-                  nodeId={nodeId}
                 ></AccordionOperators>
               )}
             </OnNodeCreatedContext.Provider>
@@ -97,16 +96,12 @@ export function InnerNextStepDropdown({
         onClick={(e) => e.stopPropagation()}
         className="w-[300px] font-semibold"
       >
-        <DropdownMenuLabel className="text-xs text-text-primary">
-          {t('flow.nextStep')}
-        </DropdownMenuLabel>
+        <DropdownMenuLabel>{t('flow.nextStep')}</DropdownMenuLabel>
         <HideModalContext.Provider value={hideModal}>
           {isPipeline ? (
-            <PipelineAccordionOperators
-              nodeId={nodeId}
-            ></PipelineAccordionOperators>
+            <PipelineAccordionOperators></PipelineAccordionOperators>
           ) : (
-            <AccordionOperators nodeId={nodeId}></AccordionOperators>
+            <AccordionOperators></AccordionOperators>
           )}
         </HideModalContext.Provider>
       </DropdownMenuContent>

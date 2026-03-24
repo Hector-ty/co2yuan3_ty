@@ -1,6 +1,6 @@
 import { useAuth } from '@/hooks/auth-hooks';
 import { redirectToLogin } from '@/utils/authorization-util';
-import { Outlet } from 'react-router';
+import { Outlet } from 'umi';
 
 export default () => {
   const { isLogin } = useAuth();

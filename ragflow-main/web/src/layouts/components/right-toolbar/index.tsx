@@ -8,13 +8,10 @@ import User from '../user';
 import { useTheme } from '@/components/theme-provider';
 import { LanguageList, LanguageMap, ThemeEnum } from '@/constants/common';
 import { useChangeLanguage } from '@/hooks/logic-hooks';
-import {
-  useFetchUserInfo,
-  useListTenant,
-} from '@/hooks/use-user-setting-request';
+import { useFetchUserInfo, useListTenant } from '@/hooks/user-setting-hooks';
 import { TenantRole } from '@/pages/user-setting/constants';
 import { BellRing, CircleHelp, MoonIcon, SunIcon } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'umi';
 import styled from './index.less';
 
 const Circle = ({ children, ...restProps }: React.PropsWithChildren) => {

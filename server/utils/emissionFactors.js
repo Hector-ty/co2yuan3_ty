@@ -4,57 +4,37 @@
 const factors = {
   // Solid Fuels (tCO2/t)
   solid: {
-    anthracite: 2.50,
-    bituminousCoal: 1.88,
-    lignite: 0.97,
-    cokingCoal: 2.61,
-    briquettes: 2.22,
-    coke: 2.61,
-    otherCokingProducts: 2.61
+    anthracite: 2.09,
+    bituminousCoal: 1.79,
+    lignite: 1.21
   },
   // Liquid Fuels (tCO2/t)
   liquid: {
-    crudeOil: 3.02,
-    fuelOil: 3.17,
-    gasoline: 3.02,
-    diesel: 3.18,
-    kerosene: 3.03,
-    lpg: 3.16,
-    lng: 3.11,
-    naphtha: 3.02,
-    asphalt: 3.31,
-    lubricants: 3.09,
-    petroleumCoke: 3.18,
-    petrochemicalFeedstock: 3.09,
-    otherOils: 3.09
+    fuelOil: 3.05,
+    gasoline: 3.04,
+    diesel: 3.14,
+    kerosene: 3.16,
+    lpg: 2.92,
+    lng: 2.59
   },
   // Gaseous Fuels (tCO2 / 10^4 Nm^3)
   gas: {
     naturalGas: 21.62,
-    refineryGas: 26.11,
-    cokeOvenGas: 8.36,
-    pipelineGas: 5.00
+    cokeOvenGas: 8.57,
+    pipelineGas: 7.00
   },
   // Indirect Emissions
   indirect: {
     // tCO2 / MWh -> converted to tCO2 / (10^4 kWh) in calculation
-    electricity: 0.79, 
+    electricity: 0.6849, 
     // kgCO2e / GJ -> converted to tCO2 / GJ in calculation
-    heat: 100 
+    heat: 0.11 
   },
-  // Mobile Sources
-  mobile: {
-    // kg CO2/L -> converted to tCO2/L in calculation
-    fuel: {
-      gasoline: 2.30,
-      diesel: 2.63
-    },
-    // kg CO2/km -> converted to tCO2/km in calculation
-    mileage: {
-      // Using an average of the provided range
-      gasolineCar: 0.15, // (0.12 + 0.18) / 2
-      dieselCar: 0.14    // (0.10 + 0.18) / 2
-    }
+  // 绿地碳汇因子 (tCO₂e/亩·年) - 植被类型：乔木、灌木、草本
+  greenSink: {
+    tree: 0.25,   // 乔木
+    shrub: 0.1,   // 灌木
+    herb: 0.05    // 草本
   }
 };
 

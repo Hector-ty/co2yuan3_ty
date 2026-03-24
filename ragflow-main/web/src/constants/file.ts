@@ -12,10 +12,4 @@ export const FileIconMap = {
   txt: 'text',
   csv: 'pdf',
   md: 'md',
-  mdx: 'md',
-  mp4: 'mp4',
-  avi: 'avi',
-  mkv: 'mkv',
-  rmvb: 'rmvb',
-  wav: 'wav',
 };

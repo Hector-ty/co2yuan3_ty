@@ -21,7 +21,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { JsonSchemaDataType } from '@/pages/agent/constant';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { Variable } from 'lucide-react';
 import { ReactNode, useCallback, useState } from 'react';
@@ -55,7 +54,6 @@ type IProps = {
   value?: string;
   onChange?: (value?: string) => void;
   placeholder?: ReactNode;
-  types?: JsonSchemaDataType[];
 } & PromptContentProps &
   Pick<VariablePickerMenuPluginProps, 'extraOptions' | 'baseOptions'>;
 
@@ -91,7 +89,7 @@ function PromptContent({
 
   return (
     <section
-      className={cn('border rounded-sm ', { 'border-accent-primary': !isBlur })}
+      className={cn('border rounded-sm ', { 'border-blue-400': !isBlur })}
     >
       {showToolbar && (
         <div className="border-b px-2 py-2 justify-end flex">
@@ -109,7 +107,7 @@ function PromptContent({
       )}
       <ContentEditable
         className={cn(
-          'relative px-2 py-1 focus-visible:outline-none max-h-[50vh] overflow-auto text-sm',
+          'relative px-2 py-1 focus-visible:outline-none max-h-[50vh] overflow-auto',
           {
             'min-h-40': multiLine,
           },
@@ -129,7 +127,6 @@ export function PromptEditor({
   multiLine = true,
   extraOptions,
   baseOptions,
-  types,
 }: IProps) {
   const { t } = useTranslation();
   const initialConfig: InitialConfigType = {
@@ -166,7 +163,7 @@ export function PromptEditor({
           placeholder={
             <div
               className={cn(
-                'absolute top-1 left-2 text-text-disabled pointer-events-none',
+                'absolute top-1 left-2 text-text-secondary pointer-events-none',
                 {
                   'truncate w-[90%]': !multiLine,
                   'translate-y-10': multiLine,
@@ -182,7 +179,6 @@ export function PromptEditor({
           value={value}
           extraOptions={extraOptions}
           baseOptions={baseOptions}
-          types={types}
         ></VariablePickerMenuPlugin>
         <PasteHandlerPlugin />
         <VariableOnChangePlugin

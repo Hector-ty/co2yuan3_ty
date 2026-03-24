@@ -1,4 +1,3 @@
-import { KeyInput } from '@/components/key-input';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -114,6 +113,7 @@ function ParameterForm({
 
   function onSubmit(data: z.infer<typeof FormSchema>) {
     const values = { ...data, options: data.options?.map((x) => x.value) };
+    console.log('🚀 ~ onSubmit ~ values:', values);
 
     submit(values);
   }
@@ -153,11 +153,7 @@ function ParameterForm({
             <FormItem>
               <FormLabel>{t('key')}</FormLabel>
               <FormControl>
-                <KeyInput
-                  {...field}
-                  autoComplete="off"
-                  onBlur={handleKeyChange}
-                />
+                <Input {...field} autoComplete="off" onBlur={handleKeyChange} />
               </FormControl>
               <FormMessage />
             </FormItem>

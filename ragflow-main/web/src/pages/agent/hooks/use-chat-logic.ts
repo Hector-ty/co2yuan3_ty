@@ -1,5 +1,6 @@
 import { MessageType } from '@/constants/chat';
-import { IMessage, Message } from '@/interfaces/database/chat';
+import { Message } from '@/interfaces/database/chat';
+import { IMessage } from '@/pages/chat/interface';
 import { get } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { BeginQuery } from '../interface';

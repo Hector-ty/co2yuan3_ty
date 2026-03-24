@@ -41,18 +41,16 @@ cd ragflow/
    pipx install uv
    ```
 
-2. Install RAGFlow service's Python dependencies:
-
+2. Install Python dependencies:
+   - slim:
    ```bash
-   uv sync --python 3.12 --frozen
+   uv sync --python 3.10 # install RAGFlow dependent python modules
+   ```
+   - full:
+   ```bash
+   uv sync --python 3.10 --all-extras # install RAGFlow dependent python modules
    ```
    *A virtual environment named `.venv` is created, and all Python dependencies are installed into the new environment.*
-
-   If you need to run tests against the RAGFlow service, install the test dependencies:
-
-   ```bash
-   uv sync --python 3.12 --group test --frozen && uv pip install sdk/python --group test
-   ```
 
 ### Launch third-party services
 

@@ -7,11 +7,11 @@ import { Flex, Form, InputNumber, Select, Slider, Switch, Tooltip } from 'antd';
 import camelCase from 'lodash/camelCase';
 
 import { useTranslate } from '@/hooks/common-hooks';
-import { useComposeLlmOptionsByModelTypes } from '@/hooks/use-llm-request';
+import { useComposeLlmOptionsByModelTypes } from '@/hooks/llm-hooks';
 import { setChatVariableEnabledFieldValuePage } from '@/utils/chat';
 import { QuestionCircleOutlined } from '@ant-design/icons';
 import { useCallback, useMemo } from 'react';
-import styles from './index.module.less';
+import styles from './index.less';
 
 interface IProps {
   prefix?: string;

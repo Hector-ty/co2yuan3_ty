@@ -7,7 +7,6 @@ import {
   ConfigurationFormContainer,
   MainContainer,
 } from '../configuration-form-container';
-import { AutoMetadata } from './common-item';
 
 export function PresentationConfiguration() {
   return (
@@ -17,7 +16,6 @@ export function PresentationConfiguration() {
       </ConfigurationFormContainer>
 
       <ConfigurationFormContainer>
-        <AutoMetadata />
         <AutoKeywordsFormField></AutoKeywordsFormField>
         <AutoQuestionsFormField></AutoQuestionsFormField>
       </ConfigurationFormContainer>

@@ -5,7 +5,7 @@ import {
   useCreateSystemToken,
   useFetchSystemTokenList,
   useRemoveSystemToken,
-} from '@/hooks/use-user-setting-request';
+} from '@/hooks/user-setting-hooks';
 import { IStats } from '@/interfaces/database/chat';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';

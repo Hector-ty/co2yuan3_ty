@@ -1,0 +1,19 @@
+{
+  "pages": [
+    "pages/login/index",
+    "pages/dashboard/index",
+    "pages/dataEntry/index",
+    "pages/reports/index",
+    "pages/video/index",
+    "pages/account/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "碳排放数据监测",
+    "navigationBarBackgroundColor": "#1976d2",
+    "navigationBarTextStyle": "white",
+    "backgroundTextStyle": "light",
+    "backgroundColor": "#f5f5f5"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

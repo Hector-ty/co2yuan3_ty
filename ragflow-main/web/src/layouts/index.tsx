@@ -1,10 +1,10 @@
 import { Divider, Layout, theme } from 'antd';
 import React from 'react';
-import { Outlet } from 'react-router';
+import { Outlet } from 'umi';
 import '../locales/config';
 import Header from './components/header';
 
-import styles from './index.module.less';
+import styles from './index.less';
 
 const { Content } = Layout;
 

@@ -2,6 +2,7 @@ const EmissionFactor = require('../models/EmissionFactor');
 const defaultFactors = require('../utils/emissionFactors');
 const { canonicalizeFactorName } = require('../utils/factorNameHelper');
 const { migrateNewSystemData } = require('../utils/migrateEmissionFactors');
+const { checkEmissionFactors } = require('../utils/checkEmissionFactors');
 
 // 获取所有排放因子
 exports.getAllFactors = async (req, res) => {
@@ -49,7 +50,7 @@ exports.createFactor = async (req, res) => {
     }
     
     // 验证 category 是否在允许的枚举值中
-    const allowedCategories = ['solid', 'liquid', 'gas', 'indirect', 'mobile'];
+    const allowedCategories = ['solid', 'liquid', 'gas', 'indirect', 'greenSink'];
     if (!allowedCategories.includes(category)) {
       return res.status(400).json({ 
         message: `类别必须是以下之一：${allowedCategories.join(', ')}`,
@@ -57,7 +58,7 @@ exports.createFactor = async (req, res) => {
       });
     }
     
-    // 对于非 mobile 类别，type 可以为空或使用 category 作为默认值
+    // type 可以为空或使用 category 作为默认值
     const finalType = type || category;
     const canonicalName = canonicalizeFactorName(name);
     
@@ -108,7 +109,7 @@ exports.updateFactor = async (req, res) => {
     }
     
     // 验证 category 是否在允许的枚举值中
-    const allowedCategories = ['solid', 'liquid', 'gas', 'indirect', 'mobile'];
+    const allowedCategories = ['solid', 'liquid', 'gas', 'indirect', 'greenSink'];
     if (!allowedCategories.includes(category)) {
       return res.status(400).json({ 
         message: `类别必须是以下之一：${allowedCategories.join(', ')}`,
@@ -116,7 +117,7 @@ exports.updateFactor = async (req, res) => {
       });
     }
     
-    // 对于非 mobile 类别，type 可以为空或使用 category 作为默认值
+    // type 可以为空或使用 category 作为默认值
     const finalType = type || category;
     const canonicalName = canonicalizeFactorName(name);
     
@@ -192,23 +193,58 @@ exports.migrateNewSystemFactors = async (req, res) => {
   }
 };
 
+// 检查数据库与项目代码的一致性
+exports.checkFactors = async (req, res) => {
+  try {
+    const result = await checkEmissionFactors();
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: '检查排放因子失败', 
+      error: error.message 
+    });
+  }
+};
+
+// 批量删除已弃用的排放因子
+exports.deleteDeprecatedFactors = async (req, res) => {
+  try {
+    // 已弃用的排放因子名称列表
+    const deprecatedFactorNames = [
+      'cokingCoal', 'briquettes', 'coke', 'otherCokingProducts', // 固体燃料（已弃用）
+      'crudeOil', 'naphtha', 'asphalt', 'lubricants', 'petroleumCoke', 'petrochemicalFeedstock', 'otherOils' // 液体燃料（已弃用）
+    ];
+    
+    // 查找并删除这些因子
+    const result = await EmissionFactor.deleteMany({
+      name: { $in: deprecatedFactorNames }
+    });
+    
+    console.log(`删除已弃用的排放因子: 找到 ${result.deletedCount} 条记录`);
+    
+    res.status(200).json({
+      success: true,
+      message: `成功删除 ${result.deletedCount} 个已弃用的排放因子`,
+      deletedCount: result.deletedCount,
+      deletedFactors: deprecatedFactorNames
+    });
+  } catch (error) {
+    console.error('删除已弃用排放因子错误:', error);
+    res.status(500).json({ 
+      success: false,
+      message: '删除已弃用排放因子失败', 
+      error: error.message 
+    });
+  }
+};
+
 function buildDefaultFactorOperations() {
   const operations = [];
 
   Object.entries(defaultFactors).forEach(([category, data]) => {
+    // mobile类别已弃用，跳过处理
     if (category === 'mobile') {
-      Object.entries(data).forEach(([mobileType, values]) => {
-        Object.entries(values).forEach(([name, value]) => {
-          operations.push(createUpsertOperation({
-            category: 'mobile',
-            type: mobileType,
-            name,
-            value,
-            unit: getUnitForFactor('mobile', mobileType, name),
-            description: `默认 ${name} 排放因子`
-          }));
-        });
-      });
       return;
     }
 
@@ -221,6 +257,21 @@ function buildDefaultFactorOperations() {
           value,
           unit: getUnitForFactor('indirect', null, name),
           description: `默认 ${name} 排放因子`
+        }));
+      });
+      return;
+    }
+
+    if (category === 'greenSink') {
+      const vegetationLabels = { tree: '乔木', shrub: '灌木', herb: '草本' };
+      Object.entries(data).forEach(([name, value]) => {
+        operations.push(createUpsertOperation({
+          category: 'greenSink',
+          type: name,
+          name,
+          value,
+          unit: getUnitForFactor('greenSink'),
+          description: `绿地碳汇因子-${vegetationLabels[name] || name}`
         }));
       });
       return;
@@ -268,10 +319,9 @@ function getUnitForFactor(category, type, name) {
       if (name === 'electricity') return 'tCO2/MWh';
       if (name === 'heat') return 'kgCO2e/GJ';
       return '';
-    case 'mobile':
-      if (type === 'fuel') return 'kgCO2/L';
-      if (type === 'mileage') return 'kgCO2/km';
-      return '';
+    case 'greenSink':
+      return 'tCO₂e/亩·年';
+    // mobile类别已弃用，不再处理
     default:
       return '';
   }

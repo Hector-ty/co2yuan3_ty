@@ -20,7 +20,21 @@ export const useRegions = () => {
         setLoading(false);
       }
     };
-    fetchRegions();
+    
+    // 使用 requestIdleCallback 在浏览器空闲时加载，不阻塞渲染
+    const loadRegions = () => fetchRegions();
+    
+    let cleanup;
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(loadRegions, { timeout: 200 });
+      cleanup = () => window.cancelIdleCallback(id);
+    } else {
+      // 使用 setTimeout(0) 在下一个事件循环执行
+      const timeoutId = setTimeout(loadRegions, 0);
+      cleanup = () => clearTimeout(timeoutId);
+    }
+    
+    return cleanup;
   }, []);
 
   return { regions, loading, error };

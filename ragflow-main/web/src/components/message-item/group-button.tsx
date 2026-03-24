@@ -13,9 +13,9 @@ import {
 import { Radio, Tooltip } from 'antd';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import FeedbackDialog from '../feedback-dialog';
-import { PromptDialog } from '../prompt-dialog';
+import FeedbackModal from './feedback-modal';
 import { useRemoveMessage, useSendFeedback, useSpeech } from './hooks';
+import PromptModal from './prompt-modal';
 
 interface IProps {
   messageId: string;
@@ -79,19 +79,19 @@ export const AssistantGroupButton = ({
         )}
       </Radio.Group>
       {visible && (
-        <FeedbackDialog
+        <FeedbackModal
           visible={visible}
           hideModal={hideModal}
           onOk={onFeedbackOk}
           loading={loading}
-        ></FeedbackDialog>
+        ></FeedbackModal>
       )}
       {promptVisible && (
-        <PromptDialog
+        <PromptModal
           visible={promptVisible}
           hideModal={hidePromptModal}
           prompt={prompt}
-        ></PromptDialog>
+        ></PromptModal>
       )}
     </>
   );

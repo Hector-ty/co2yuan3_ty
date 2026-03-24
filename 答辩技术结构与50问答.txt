@@ -1,0 +1,216 @@
+技术结构（答辩可讲版本）
+本项目是一个“公共机构碳排放核算与可视化/报表生成平台”，采用 Docker Compose 部署，整体由三类核心模块组成：前端展示端、后端业务与数据层、AI 与外部服务层。
+
+1）部署层（docker-compose）
+- frontend：Web 前端（React + Vite，图表用 ECharts 等）
+- mobile：移动端适配版（MT，Docker 里单独打包并对外提供 81 端口）
+- backend：后端 API（Node.js + Express + MongoDB）
+- mongodb：存储用户、碳排放数据、排放因子、映射模板、对话元数据等
+- ollama：本地大模型推理（作为聊天与兜底 AI 生成）
+- ai_service：FastAPI + LlamaIndex 的 AI 容器，提供 /query（加载 HuggingFace embedding 并基于 ./data 构建向量索引）
+- gotenberg：DOCX -> PDF 的服务，并在转换失败时可回退到容器内 LibreOffice
+
+2）后端技术栈与核心 API
+- 技术：express + mongoose（JWT 鉴权、角色权限中间件、MongoDB 持久化）
+- 主要能力：
+  - 用户认证与权限：/api/auth/*
+  - 数据录入/查询：/api/carbon-data/*
+    - 提交、分页查询、按年份/ID读写、Excel 批量导入
+  - 数据映射模板：/api/data-mapping/*
+    - 定义“上传列名 -> 数据库字段路径”，并在导入时完成校验与单位换算
+  - 排放因子管理：/api/emission-factors/*
+    - 默认因子 + 数据库覆盖；支持初始化/迁移/校验
+  - 报表导出：/api/reports/*
+    - CSV/Excel：同步导出
+    - 单条报告：DOCX 生成，PDF 时优先 Gotenberg（SSE 有进度接口）
+    - 批量报告：创建导出任务（jobId），完成后 ZIP 下载
+  - AI 助手聊天
+    - /api/ai/chat/stream（SSE 流式输出；前端逐段拼接展示）
+
+3）排放计算引擎（业务关键）
+关键实现：server/utils/calculationEngine.js
+- 输入：前端提交的 activityData（化石燃料燃烧、逸散排放、间接排放、电/热、绿地碳汇、强度指标）
+- 计算原则：
+  - 固体/液体/气体燃料：按“燃料消耗量 × 对应排放因子”累加到 breakdown
+  - 气体燃料含单位换算：匹配因子单位（tCO2 / 万Nm3）并做除以 10000 的换算
+  - 逸散排放：对不同气体设置阈值（低于阈值置 0）；因子来自数据库的 fugitive 类别
+  - 间接排放：外购电力/热力分别做单位换算后乘因子并合计
+  - 绿地碳汇扣减：tree/shrub/herb 乘扣减因子形成 totalGreenSink，再从总排放中扣减并防负数
+  - 强度指标：按面积/人数计算强度；分母为 0 返回 0
+- 输出：
+  - breakdown、detailedBreakdown（23 个详细数据项）
+  - totalDirect / totalIndirect / totalEmissions
+  - emissionIntensityByArea / emissionIntensityByPerson
+
+4）报表生成（DOCX 模板 + AI 段落 + PDF 转换）
+关键链路：server/controllers/reports.js + server/utils/carbonReportBuilder.js
+- DOCX：
+  - 模板占位符：
+    - []：直接替换为数值/字段
+    - {}：从中提取 AI 提示词，调用 AI 生成段落并填充
+  - carbonReportBuilder.js 会处理 Word XML 编码与字符串清理，并尽量保证 LibreOffice 可加载
+- PDF：
+  - 优先调用 Gotenberg 的 forms/libreoffice/convert
+  - 若 Gotenberg 未就绪/返回 500，则重试并在必要时回退到本机 LibreOffice（soffice）
+
+5）AI 生成策略（RAGFlow + Ollama 兜底）
+- 报表导出时：
+  - 优先 ragflowService（若环境变量配置了 RAGFlow API + KB/对话 ID），失败则回退到 ollamaService
+- 聊天时：
+  - 当前实现主要使用 ollamaService（支持流式与非流式）
+- 生成文本后处理：
+  - 会去除常见问候语、拒答类输出；不确定/拒答则替换为“占位提示文本”，保证报告可用性
+
+------------------------------------------------------------
+50 个评委可能提的高质量问题与参考回答
+
+1. 请用一句话概括你们的系统解决了什么问题？
+答：实现公共机构碳排放的“数据填报—排放核算—图表可视化—生成规范报告（DOCX/PDF）”，并用 AI 辅助报告段落生成。
+
+2. 你们的系统总体架构如何划分？数据怎么从前端流到后端？
+答：前端调用后端 REST 接口（如 /api/carbon-data、/api/reports），后端对 activityData 归一化后进入计算引擎生成 calculatedEmissions 并写入 MongoDB；导出时再读取计算结果生成文档。
+
+3. 为什么把“计算结果”也存库，而不是每次查询实时算？
+答：写入时计算保证结果一致性，并降低导出/批量导出时的重复计算开销；同时便于前端直接渲染 breakdown 与详细项。
+
+4. 排放计算的核心公式是什么？（举例说明直接排放）
+答：直接排放的核心为“燃料消耗量 × 对应排放因子”；不同燃料类别（固体/液体/气体）分别按各自单位进行换算后累加。
+
+5. 气体燃料为什么要做单位换算？换算在哪里体现？
+答：因子单位为 tCO2/万Nm3，计算时把输入的 m³ 换算到万Nm3 后再乘因子；实现体现在 calculationEngine.js 对 fossilFuels.gas 的 emission 公式中。
+
+6. 逸散排放阈值策略是什么目的？
+答：避免低于阈值的输入对结果造成不必要的噪声；阈值以下对应气体排放置为 0（代码里有阈值映射表）。
+
+7. 逸散排放阈值和气体种类是如何管理的？
+答：阈值表写在计算引擎里；具体排放因子从数据库的 fugitive 类别读取，便于后续因子更新。
+
+8. 间接排放（外购电力/热力）的计算如何做？
+答：外购电力将 purchasedElectricity（10^4 kWh 单位）做换算后乘 indirect.electricity 因子；外购热力按 purchasedHeat(GJ) × indirect.heat 因子计算。
+
+9. 绿地碳汇怎么扣减？扣减逻辑有什么工程细节？
+答：tree/shrub/herb 分别乘扣减权重形成 totalGreenSink；总排放计算中使用 Math.max(0, totalDirect + totalIndirect - totalGreenSink) 防止负值，并输出到 breakdown.totalGreenSink 供追溯。
+
+10. 强度指标（按面积/按人数）怎么计算？分母为 0 会怎样？
+答：面积/人数为 0 时直接返回 0；实现中在计算 intensityMetrics 的两个强度值时做了条件判断。
+
+11. 排放因子默认值和数据库值的关系是什么？
+答：计算引擎先加载默认因子，再读取数据库中的 EmissionFactor 覆盖同名因子；保证可用性同时允许校准。
+
+12. 数据库里缺某个因子会发生什么？
+答：计算引擎会抛出明确错误（例如缺少 solid/liquid/gas/逸散/电力/热力因子），提示应先在排放因子管理页面补齐。
+
+13. 你们如何处理历史数据/字段兼容性问题？
+答：保留对已弃用字段的兼容跳过逻辑，并在 ensureActivityDataStructure 中按 formSections 补齐叶节点缺省值为 0。
+
+14. 用户提交的数据结构是扁平还是嵌套？后端如何统一？
+答：后端支持扁平结构（例如 fossilFuels.solid.anthracite 风格）会被转换为嵌套 activityData；随后再按 formSections 补齐结构。
+
+15. 单条提交与更新逻辑是否一致？
+答：更新同样会归一化并保留 existing 里不应被冲掉的部分字段，从而降低“只修改部分导致全量丢失”的风险。
+
+16. 为什么需要“数据映射模板”？
+答：用于把不同单位/不同 Excel 列名映射到统一的后端字段路径，并在导入时完成单位换算与校验，从而让系统适配多种原始数据格式。
+
+17. 映射模板如何校验数据？
+答：在 dataMapping.js 中通过 CarbonData schema paths 校验映射字段是否存在；同时对 Number 字段做数字解析与单位转换，错误行会记录并跳过。
+
+18. 导入时做了哪些单位换算？举例说明。
+答：例如电消费量 kWh -> 10^4 kWh、天然气 m^3 -> 10^4 m^3、汽油/柴油升按密度换算为千克；液化石油气千克 -> 吨等，均由列名规则触发转换。
+
+19. 批量导入 Excel 的模板格式要求是什么？
+答：在批量导入解析函数里读取固定模板格式（示例：第 1 行中文说明、第 2 行字段名、第 3 行起为数据）。
+
+20. 批量导入失败会影响整个导入吗？
+答：按行处理：每行 try/catch，失败行记录到 errors；最终返回统计与错误明细，尽量保证“可导入的行不丢失”。
+
+21. 上传接口的鉴权与权限控制怎么做？
+答：上传路由使用 JWT protect 中间件，且通过 multer 限制文件类型（csv/xlsx/xls），映射模板管理也要求登录。
+
+22. 数据查询如何做多角色与区域的数据隔离？
+答：后端基于 req.user.role 构造 Mongo 查询过滤：超级管理员不加过滤；机构用户按 account 过滤；管理员按 regionCode 前缀（省/市）或精确（区县）限制。
+
+23. 你们怎么避免管理员越权？
+答：所有写操作（新增/更新/删除）都在控制器中检查目标数据 regionCode 是否落入管理员权限范围；机构用户还会校验 account 是否匹配自己的 id。
+
+24. 后端鉴权用的是什么机制？token 过期策略是什么？
+答：JWT（jsonwebtoken），登录后 expiresIn 为 1d；请求携带 Authorization: Bearer token 并由 protect 中间件校验。
+
+25. 为什么移动端接口是公共的？如何避免泄露？
+答：/api/mobile/carbon-data 当前为公共只读接口；为安全进一步可在后端增加更严格的地区/机构筛选策略（答辩可说明当前版本边界与可扩展点）。
+
+26. 图表数据如何供前端渲染？
+答：前端主要读取后端返回的计算结果（calculatedEmissions.breakdown 与详细项），并直接用于 ECharts 的图表渲染；避免前端重复计算。
+
+27. 报表导出 DOCX 时如何把数据填到模板？
+答：carbonReportBuilder.js 读取 DOCX zip 中的 word/document.xml，利用占位符规则替换文本；其中 {} 占位会提取提示词调用 AI。
+
+28. AI 提示词如何从模板里提取？
+答：extractAIPrompt 支持多种引号提取方式（中文引号、英文引号等），并尽量取最后一段“实质问题”作为 prompt。
+
+29. AI 输出如何防止“您好/拒答/元说明”进入报告？
+答：在报表生成链路里做后处理：检测常见拒答与问候语模式后，用占位文本替代，确保正文段落可读。
+
+30. 如果 AI 生成失败怎么办？有回退吗？
+答：有。优先 RAGFlow，失败回退 Ollama；生成失败时使用兜底文本或占位提示，保证导出流程可完成。
+
+31. 为什么同时支持 RAGFlow 与 Ollama？
+答：RAGFlow 在知识库配置齐全时能更贴合本项目语料；当知识库不可用/接口失败时，Ollama 兜底保证可用性。
+
+32. RAGFlow 是怎么被接入的？
+答：ragflowService.js 支持按知识库名称解析数据集 id，再调用 /api/v1/searchbots/ask；或者按 dialog id 调用 chatbots completions 接口。
+
+33. AI 聊天接口如何实现流式输出？
+答：后端返回 text/event-stream，并不断写入 `data: {...}\n\n`；前端逐行解析 data: 并把片段拼接到 UI。
+
+34. SSE 失败/超时会如何影响体验？
+答：前端捕获错误并把最后一条 AI 消息替换为错误说明或重试提示，避免 UI 卡死。
+
+35. 你们有没有保存聊天上下文？AI 会不会遗忘？
+答：当前实现主要基于单次 question 调用模型，历史对话“元数据（会话列表/标题）”有保存，但是否把历史对话作为上下文拼接进 prompt，需要按当前代码实际行为说明（答辩可提可优化点）。
+
+36. Ollama 服务启动后如何保障可用性？
+答：后端启动时 autoConnectOllama 会尝试连通并检查模型是否已安装；并有健康检查端点 /api/ai/health 与后台重试机制。
+
+37. 提供 /api/ai/health 的意义是什么？
+答：降低“模型未就绪导致请求失败”的概率，让前端在发起聊天或演示前可判断状态。
+
+38. DOCX→PDF 的工程方案是什么？
+答：优先调用 Gotenberg 的 LibreOffice 转换接口；首次返回 500 会等待并重试一次；若仍失败则尝试本机 LibreOffice 回退。
+
+39. 为什么回退要用本机 LibreOffice（soffice）？
+答：竞赛演示追求可用性；当容器内外依赖尚未就绪或服务不可用时，用本机能力保证导出仍有机会成功。
+
+40. 回退转换如何避免 LibreOffice 初始化失败？
+答：对 soffice 路径做候选探测；并对特定退出码场景进行重试，同时采用 DOCX→ODT→PDF 的两段式转换策略。
+
+41. 单条与批量导出最大的差异是什么？
+答：单条导出直接返回缓冲或经 SSE 生成后 token 下载；批量导出创建任务并在后台逐条生成，最终 ZIP 打包下载。
+
+42. 导出进度如何呈现给用户？
+答：导出流接口通过 SSE 推送 progress 与阶段消息（如加载数据、计算排放、生成 DOCX、转换 PDF）。
+
+43. 批量导出的 jobId 如何实现？
+答：后端在内存中维护 batchJobs Map；创建任务后用异步处理逐条生成，并更新 job 的 status/results。
+
+44. 为什么下载链接使用 token 并设置 TTL？
+答：下载 token 对应内存中的 buffer，TTL 用于在一定时间后清理，避免内存泄漏和过期链接长期可访问。
+
+45. 用内存队列在多实例部署有什么风险？
+答：多实例时内存状态不共享，job/tokens 可能落到不同实例导致不可下载；若要生产级扩展，可引入 Redis/队列系统。
+
+46. 上传的文件大小与类型限制是否到位？
+答：到位。multer 对 fileSize 与 mimetype 做限制，拒绝不支持类型，降低资源消耗与安全风险。
+
+47. DOCX 模板中的 AI 文本如何避免破坏 XML？
+答：对插入文本做 Word XML 转义，必要时做 markdown→runs 转换，并在替换前清理不可见/控制字符，减少 LibreOffice 加载失败概率。
+
+48. AI 输出如何保证“报告段落风格”而不是聊天风格？
+答：通过模板内的 prompt 约束输出为“报告正文段落”，并在后处理阶段去除问候语与拒答元说明。
+
+49. 竞赛演示时如何降低导出失败概率？
+答：工程上做了多重兜底：RAGFlow→Ollama、Gotenberg→重试、Gotenberg→LibreOffice 回退、并对 AI 文本做占位替换，保证流程不断链。
+
+50. 你们的创新点可以如何总结？
+答：创新点可概括为：把“核算计算引擎 + 多级数据映射 + 报表模板填充”打通，并引入 AI 段落生成与稳定性的多层回退/进度机制，让竞赛演示与实际落地更可靠。
+

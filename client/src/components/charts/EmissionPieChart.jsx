@@ -4,7 +4,7 @@ import { Box, Typography, Grid } from '@mui/material'; // 使用MUI组件
 
 const emissionTypes = {
   fossilFuels: '化石燃料燃烧',
-  mobileSources: '移动源燃烧',
+  fugitiveEmissions: '逸散排放',
   electricity: '外购电力',
   heat: '外购热力',
 };
@@ -26,15 +26,28 @@ const EmissionPieChart = ({ data, comparisonData, compareMode }) => {
       title: {
         text: title,
         left: 'center',
-        top: 'bottom'
+        top: 'bottom',
+        textStyle: {
+          color: '#fff'
+        }
       },
       tooltip: {
         trigger: 'item',
-        formatter: '{b}: {c} tCO₂ ({d}%)'
+        backgroundColor: '#fff',
+        borderColor: '#ccc',
+        borderWidth: 1,
+        formatter: '{b}: {c} tCO₂ ({d}%)',
+        textStyle: {
+          color: '#333',
+          fontSize: 12
+        }
       },
       legend: {
         orient: 'vertical',
         left: 'left',
+        textStyle: {
+          color: '#fff'
+        }
       },
       series: [{
         name: '排放来源',
@@ -69,7 +82,7 @@ const EmissionPieChart = ({ data, comparisonData, compareMode }) => {
     // Calculate average for comparison data
     const avgBreakdown = {
       fossilFuels: 0,
-      mobileSources: 0,
+      fugitiveEmissions: 0,
       electricity: 0,
       heat: 0,
     };
@@ -77,7 +90,7 @@ const EmissionPieChart = ({ data, comparisonData, compareMode }) => {
     validComparisonData.forEach(item => {
         const breakdown = item.calculatedEmissions?.breakdown || {};
         avgBreakdown.fossilFuels += breakdown.fossilFuels || 0;
-        avgBreakdown.mobileSources += breakdown.mobileSources || 0;
+        avgBreakdown.fugitiveEmissions += breakdown.fugitiveEmissions || 0;
         avgBreakdown.electricity += breakdown.electricity || 0;
         avgBreakdown.heat += breakdown.heat || 0;
     });

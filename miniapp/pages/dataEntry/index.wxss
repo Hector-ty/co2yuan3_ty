@@ -1,0 +1,46 @@
+.page {
+  min-height: 100vh;
+}
+
+.form-item {
+  margin-bottom: 24rpx;
+}
+
+.label {
+  font-size: 26rpx;
+  color: #555555;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.input {
+  border-radius: 8rpx;
+  border: 1rpx solid #dddddd;
+  padding: 16rpx 20rpx;
+  font-size: 28rpx;
+}
+
+.textarea {
+  border-radius: 8rpx;
+  border: 1rpx solid #dddddd;
+  padding: 16rpx 20rpx;
+  font-size: 26rpx;
+  min-height: 200rpx;
+}
+
+.submit-btn {
+  margin-top: 32rpx;
+}
+
+.error-text {
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: #d32f2f;
+}
+
+.success-text {
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: #2e7d32;
+}
+

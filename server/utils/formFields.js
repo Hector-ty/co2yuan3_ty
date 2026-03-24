@@ -9,30 +9,19 @@ module.exports.formSections = [
         fields: [
           { name: ['fossilFuels', 'solid', 'anthracite'], label: '无烟煤' },
           { name: ['fossilFuels', 'solid', 'bituminousCoal'], label: '烟煤' },
-          { name: ['fossilFuels', 'solid', 'lignite'], label: '褐煤' },
-          { name: ['fossilFuels', 'solid', 'cokingCoal'], label: '炼焦煤' },
-          { name: ['fossilFuels', 'solid', 'briquettes'], label: '型煤' },
-          { name: ['fossilFuels', 'solid', 'coke'], label: '焦炭' },
-          { name: ['fossilFuels', 'solid', 'otherCokingProducts'], label: '其它焦化产品' },
+          { name: ['fossilFuels', 'solid', 'lignite'], label: '褐煤' }
         ]
       },
       {
         key: '1-2',
         header: '液体燃料 (吨)',
         fields: [
-          { name: ['fossilFuels', 'liquid', 'crudeOil'], label: '原油' },
           { name: ['fossilFuels', 'liquid', 'fuelOil'], label: '燃料油' },
-          { name: ['fossilFuels', 'liquid', 'gasoline'], label: '汽油(非车辆)' },
-          { name: ['fossilFuels', 'liquid', 'diesel'], label: '柴油(非车辆)' },
+          { name: ['fossilFuels', 'liquid', 'gasoline'], label: '汽油' },
+          { name: ['fossilFuels', 'liquid', 'diesel'], label: '柴油' },
           { name: ['fossilFuels', 'liquid', 'kerosene'], label: '煤油' },
           { name: ['fossilFuels', 'liquid', 'lpg'], label: '液化石油气' },
-          { name: ['fossilFuels', 'liquid', 'lng'], label: '液化天然气' },
-          { name: ['fossilFuels', 'liquid', 'naphtha'], label: '石脑油' },
-          { name: ['fossilFuels', 'liquid', 'asphalt'], label: '沥青' },
-          { name: ['fossilFuels', 'liquid', 'lubricants'], label: '润滑油' },
-          { name: ['fossilFuels', 'liquid', 'petroleumCoke'], label: '石油焦' },
-          { name: ['fossilFuels', 'liquid', 'petrochemicalFeedstock'], label: '石化原料油' },
-          { name: ['fossilFuels', 'liquid', 'otherOils'], label: '其它油品' },
+          { name: ['fossilFuels', 'liquid', 'lng'], label: '液化天然气' }
         ]
       },
       {
@@ -40,7 +29,6 @@ module.exports.formSections = [
         header: '气体燃料 (立方米)',
         fields: [
           { name: ['fossilFuels', 'gas', 'naturalGas'], label: '天然气' },
-          { name: ['fossilFuels', 'gas', 'refineryGas'], label: '炼厂干气' },
           { name: ['fossilFuels', 'gas', 'cokeOvenGas'], label: '焦炉煤气' },
           { name: ['fossilFuels', 'gas', 'pipelineGas'], label: '管道煤气' },
         ]
@@ -49,22 +37,27 @@ module.exports.formSections = [
   },
   {
     key: '2',
-    header: '直接排放(移动源)',
+    header: '直接排放(逸散排放)',
     panels: [
       {
         key: '2-1',
-        header: '按燃料消耗量计算',
+        header: '空调系统',
         fields: [
-          { name: ['mobileSources', 'fuel', 'gasoline'], label: '汽油 (升)' },
-          { name: ['mobileSources', 'fuel', 'diesel'], label: '柴油 (升)' },
+          { name: ['fugitiveEmissions', 'airConditioning', 'HCFC-22'], label: 'HCFC-22' },
+          { name: ['fugitiveEmissions', 'airConditioning', 'HFC-32'], label: 'HFC-32' },
+          { name: ['fugitiveEmissions', 'airConditioning', 'HFC-125'], label: 'HFC-125' },
+          { name: ['fugitiveEmissions', 'airConditioning', 'HFC-134a'], label: 'HFC-134a' },
+          { name: ['fugitiveEmissions', 'airConditioning', 'HFC-143a'], label: 'HFC-143a' },
+          { name: ['fugitiveEmissions', 'airConditioning', 'HFC-227a'], label: 'HFC-227a' },
+          { name: ['fugitiveEmissions', 'airConditioning', 'HFC-245fa'], label: 'HFC-245fa' },
         ]
       },
       {
         key: '2-2',
-        header: '按行驶里程计算',
+        header: '灭火系统',
         fields: [
-          { name: ['mobileSources', 'mileage', 'gasolineCar'], label: '汽油车 (公里)' },
-          { name: ['mobileSources', 'mileage', 'dieselCar'], label: '柴油车 (公里)' },
+          { name: ['fugitiveEmissions', 'fireSuppression', 'CO2'], label: 'CO2' },
+          { name: ['fugitiveEmissions', 'fireSuppression', 'HFC-227ea'], label: 'HFC-227ea' },
         ]
       }
     ]
@@ -79,6 +72,15 @@ module.exports.formSections = [
   },
   {
     key: '4',
+    header: '绿地碳汇',
+    fields: [
+      { name: ['greenSink', 'tree'], label: '乔木绿地面积 (亩)' },
+      { name: ['greenSink', 'shrub'], label: '灌木绿地面积 (亩)' },
+      { name: ['greenSink', 'herb'], label: '草本绿地面积 (亩)' },
+    ]
+  },
+  {
+    key: '5',
     header: '单位基本情况',
     fields: [
       { name: ['intensityMetrics', 'buildingArea'], label: '机关单位建筑面积 (平方米)' },

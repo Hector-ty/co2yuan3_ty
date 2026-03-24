@@ -1,3 +1,4 @@
+import LLMLabel from '@/components/llm-select/llm-label';
 import { IAgentNode } from '@/interfaces/database/flow';
 import { cn } from '@/lib/utils';
 import { Handle, NodeProps, Position } from '@xyflow/react';
@@ -8,7 +9,6 @@ import { AgentExceptionMethod, NodeHandleId } from '../../constant';
 import { AgentFormSchemaType } from '../../form/agent-form';
 import useGraphStore from '../../store';
 import { hasSubAgent, isBottomSubAgent } from '../../utils';
-import { LLMLabelCard } from './card';
 import { CommonHandle, LeftEndHandle } from './handle';
 import { RightHandleStyle } from './handle-icon';
 import NodeHeader from './node-header';
@@ -44,7 +44,7 @@ function InnerAgentNode({
 
   return (
     <ToolBar selected={selected} id={id} label={data.label}>
-      <NodeWrapper selected={selected} id={id}>
+      <NodeWrapper selected={selected}>
         {isHeadAgent && (
           <>
             <LeftEndHandle></LeftEndHandle>
@@ -90,7 +90,9 @@ function InnerAgentNode({
         ></Handle>
         <NodeHeader id={id} name={data.name} label={data.label}></NodeHeader>
         <section className="flex flex-col gap-2">
-          <LLMLabelCard llmId={get(data, 'form.llm_id')}></LLMLabelCard>
+          <div className={'bg-bg-card rounded-sm p-1'}>
+            <LLMLabel value={get(data, 'form.llm_id')}></LLMLabel>
+          </div>
           {(isGotoMethod ||
             exceptionMethod === AgentExceptionMethod.Comment) && (
             <div className="bg-bg-card rounded-sm p-1 flex justify-between gap-2">

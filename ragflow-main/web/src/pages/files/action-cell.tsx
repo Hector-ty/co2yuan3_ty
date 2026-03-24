@@ -1,19 +1,13 @@
-import {
-  ConfirmDeleteDialog,
-  ConfirmDeleteDialogNode,
-} from '@/components/confirm-delete-dialog';
-import { FileIcon } from '@/components/icon-font';
+import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog';
 import NewDocumentLink from '@/components/new-document-link';
 import { Button } from '@/components/ui/button';
-import { useDownloadFile } from '@/hooks/use-file-request';
+import { useDownloadFile } from '@/hooks/file-manager-hooks';
 import { IFile } from '@/interfaces/database/file-manager';
-import { cn } from '@/lib/utils';
 import {
   getExtension,
   isSupportedPreviewDocumentType,
 } from '@/utils/document-util';
 import { CellContext } from '@tanstack/react-table';
-import { t } from 'i18next';
 import {
   ArrowDownToLine,
   Eye,
@@ -44,9 +38,6 @@ export function ActionCell({
 }: IProps) {
   const record = row.original;
   const documentId = record.id;
-  const name: string = row.getValue('name');
-  const type = record.type;
-
   const { downloadFile } = useDownloadFile();
   const isFolder = isFolderType(record.type);
   const extension = getExtension(record.name);
@@ -160,28 +151,7 @@ export function ActionCell({
         </DropdownMenuContent>
       </DropdownMenu> */}
       {isKnowledgeBase || (
-        <ConfirmDeleteDialog
-          onOk={onRemoveFile}
-          title={t('deleteModal.delFile')}
-          content={{
-            node: (
-              <ConfirmDeleteDialogNode>
-                <div className="flex items-center gap-2 text-text-secondary">
-                  <span className="size-4">
-                    <FileIcon name={name} type={type}></FileIcon>
-                  </span>
-                  <span
-                    className={cn('truncate text-xs', {
-                      ['cursor-pointer']: isFolder,
-                    })}
-                  >
-                    {name}
-                  </span>
-                </div>
-              </ConfirmDeleteDialogNode>
-            ),
-          }}
-        >
+        <ConfirmDeleteDialog onOk={onRemoveFile}>
           <Button
             variant="transparent"
             className="border-none hover:bg-bg-card text-text-primary"

@@ -1,16 +1,26 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
-import DataScreenPage from './pages/DataScreenPage';
-import EmissionFactorManagementPage from './pages/EmissionFactorManagementPage'; // 导入排放因子管理页面
-import NewEmissionFactorManagementPage from './pages/NewEmissionFactorManagementPage'; // 导入新系统排放因子管理页面
-import EmissionFactorLoginPage from './pages/EmissionFactorLoginPage'; // 导入排放因子管理系统登录页面
-import DataUploadPage from './pages/DataUploadPage'; // 导入数据上传页面
+import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { Box, CircularProgress } from '@mui/material';
 import VideoBackground from './components/VideoBackground';
-import AiChat from './components/AiChat'; // 导入新组件
+// 登录页同步导入，因为首次访问通常是登录页，需要立即显示
+import LoginPage from './pages/LoginPage';
+// AI 助手入口（右下角按钮，跳转到 /ai-assistant）；仅在非 AI 助手页显示
+import AIAssistantEntry from './components/AIAssistantEntry';
+
+function AIAssistantEntryWhenNotOnPage() {
+  const { pathname } = useLocation();
+  if (pathname === '/ai-assistant') return null;
+  return <AIAssistantEntry />;
+}
+
+// 其他页面懒加载，减少首次加载时间
+const AIAssistantPage = lazy(() => import('./pages/AIAssistantPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const DataScreenPage = lazy(() => import('./pages/DataScreenPage'));
+const NewEmissionFactorManagementPage = lazy(() => import('./pages/NewEmissionFactorManagementPage'));
+const EmissionFactorLoginPage = lazy(() => import('./pages/EmissionFactorLoginPage'));
+const DataUploadPage = lazy(() => import('./pages/DataUploadPage'));
 
 // 权限保护组件
 const ProtectedRoute = ({ children, requiredRole = null }) => {
@@ -21,7 +31,9 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
     
     if (requiredRole) {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
-        if (user.role !== requiredRole) {
+        // 支持单个角色或角色数组
+        const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+        if (!allowedRoles.includes(user.role)) {
             return <Navigate to="/dashboard" />;
         }
     }
@@ -55,14 +67,14 @@ const EmissionFactorManagementRoute = () => {
             try {
                 const user = JSON.parse(emissionFactorUser);
                 console.log('EmissionFactorManagementRoute - 用户信息:', user);
-                // 验证用户角色是否为管理员
-                if (user.role === 'admin') {
-                    console.log('EmissionFactorManagementRoute - 管理员已登录，进入管理页面');
+                // 仅允许超级管理员访问排放因子管理系统
+                if (user.role === 'superadmin') {
+                    console.log('EmissionFactorManagementRoute - 超级管理员已登录，进入管理页面');
                     setIsAuthenticated(true);
                     setIsAdmin(true);
                 } else {
-                    // 如果不是管理员，清除无效数据并显示登录界面
-                    console.log('EmissionFactorManagementRoute - 非管理员，清除数据并显示登录界面');
+                    // 如果不是超级管理员，清除无效数据并显示登录界面
+                    console.log('EmissionFactorManagementRoute - 非超级管理员，清除数据并显示登录界面');
                     localStorage.removeItem(EMISSION_FACTOR_TOKEN_KEY);
                     localStorage.removeItem(EMISSION_FACTOR_USER_KEY);
                     setIsAuthenticated(false);
@@ -120,19 +132,23 @@ const EmissionFactorManagementRoute = () => {
     }
 
     if (!isAuthenticated) {
-        return <EmissionFactorLoginPage 
-            onLoginSuccess={(token, user) => {
-                // 登录成功后，保存到专门的存储
-                localStorage.setItem(EMISSION_FACTOR_TOKEN_KEY, token);
-                localStorage.setItem(EMISSION_FACTOR_USER_KEY, JSON.stringify(user));
-                // 同时更新主系统的存储（如果需要）
-                localStorage.setItem('token', token);
-                localStorage.setItem('user', JSON.stringify(user));
-                // 重新检查状态
-                setIsAuthenticated(true);
-                setIsAdmin(user.role === 'admin');
-            }}
-        />;
+        return (
+            <Suspense fallback={<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Box>}>
+                <EmissionFactorLoginPage 
+                    onLoginSuccess={(token, user) => {
+                        // 登录成功后，保存到专门的存储
+                        localStorage.setItem(EMISSION_FACTOR_TOKEN_KEY, token);
+                        localStorage.setItem(EMISSION_FACTOR_USER_KEY, JSON.stringify(user));
+                        // 同时更新主系统的存储（如果需要）
+                        localStorage.setItem('token', token);
+                        localStorage.setItem('user', JSON.stringify(user));
+                        // 重新检查状态（仅允许超级管理员）
+                        setIsAuthenticated(true);
+                        setIsAdmin(user.role === 'superadmin');
+                    }}
+                />
+            </Suspense>
+        );
     }
 
     if (!isAdmin) {
@@ -140,23 +156,36 @@ const EmissionFactorManagementRoute = () => {
     }
 
     return (
-        <ProtectedRoute requiredRole="admin">
-            <NewEmissionFactorManagementPage />
-        </ProtectedRoute>
+        <Suspense fallback={<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Box>}>
+            <ProtectedRoute requiredRole="superadmin">
+                <NewEmissionFactorManagementPage />
+            </ProtectedRoute>
+        </Suspense>
     );
 };
 
 function App() {
-    const [token, setToken] = useState(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const storedToken = localStorage.getItem('token');
-        if (storedToken) {
-            setToken(storedToken);
+    // 立即从 localStorage 读取 token，避免等待 useEffect，减少首次加载延迟
+    const [token, setToken] = useState(() => {
+        try {
+            return localStorage.getItem('token');
+        } catch {
+            return null;
         }
-        setLoading(false);
-    }, []);
+    });
+    const [loading] = useState(false); // 不再需要 loading 状态，因为 token 已经同步读取
+    
+    // 如果访问根路径，立即重定向（在渲染前）
+    React.useEffect(() => {
+        const path = window.location.pathname;
+        if (path === '/' || path === '') {
+            if (token) {
+                window.location.replace('/dashboard');
+            } else {
+                window.location.replace('/login');
+            }
+        }
+    }, [token]);
 
     const handleLogin = (newToken) => {
         localStorage.setItem('token', newToken);
@@ -170,99 +199,175 @@ function App() {
     };
 
     useEffect(() => {
-        // 请求拦截器：添加 token
-        const requestInterceptor = axios.interceptors.request.use(
-            config => {
-                const token = localStorage.getItem('token');
-                if (token) {
-                    config.headers.Authorization = `Bearer ${token}`;
-                }
-                return config;
-            },
-            error => {
-                console.error('请求拦截器错误:', error);
-                return Promise.reject(error);
-            }
-        );
-
-        // 响应拦截器：统一处理错误
-        const responseInterceptor = axios.interceptors.response.use(
-            response => response,
-            error => {
-                // 统一处理错误，防止未捕获的错误导致崩溃
-                if (error.response) {
-                    // 服务器返回了错误响应
-                    const { status, data } = error.response;
-                    console.error('API 错误响应:', status, data);
-                    
-                    // 401 未授权，清除 token 并跳转到登录页
-                    if (status === 401) {
-                        localStorage.removeItem('token');
-                        localStorage.removeItem('user');
-                        window.location.href = '/login';
+        // 延迟设置 axios 拦截器，不阻塞初始渲染
+        let requestInterceptor;
+        let responseInterceptor;
+        let cleanup;
+        
+        const setupInterceptors = () => {
+            // 请求拦截器：添加 token
+            requestInterceptor = axios.interceptors.request.use(
+                config => {
+                    const token = localStorage.getItem('token');
+                    if (token) {
+                        config.headers.Authorization = `Bearer ${token}`;
                     }
-                } else if (error.request) {
-                    // 请求已发出但没有收到响应
-                    console.error('网络错误: 无法连接到服务器');
-                } else {
-                    // 其他错误
-                    console.error('请求配置错误:', error.message);
+                    return config;
+                },
+                error => {
+                    console.error('请求拦截器错误:', error);
+                    return Promise.reject(error);
                 }
-                
-                // 返回错误，让调用者处理
-                return Promise.reject(error);
-            }
-        );
+            );
 
+            // 响应拦截器：统一处理错误
+            let isRedirecting = false; // 防止重复跳转
+            responseInterceptor = axios.interceptors.response.use(
+                response => response,
+                error => {
+                    // 统一处理错误，防止未捕获的错误导致崩溃
+                    if (error.response) {
+                        // 服务器返回了错误响应
+                        const { status, data } = error.response;
+                        console.error('API 错误响应:', status, data);
+                        
+                        // 401 未授权：清除 token；仅对「非 AI 助手接口」跳转登录，避免刷新 AI 助手页时直接跳转导致历史列表看不到
+                        if (status === 401 && !isRedirecting) {
+                            isRedirecting = true;
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('user');
+                            const isAiConversationRequest = error.config?.url?.includes?.('/api/ai/');
+                            if (!isAiConversationRequest) {
+                                window.location.replace('/login');
+                            }
+                        }
+                    } else if (error.request) {
+                        // 请求已发出但没有收到响应
+                        console.error('网络错误: 无法连接到服务器');
+                    } else {
+                        // 其他错误
+                        console.error('请求配置错误:', error.message);
+                    }
+                    
+                    // 返回错误，让调用者处理
+                    return Promise.reject(error);
+                }
+            );
+        };
+        
+        // 立即设置拦截器，因为它们是必需的（但不会阻塞渲染）
+        setupInterceptors();
+        
+        cleanup = () => {
+            if (requestInterceptor !== undefined) {
+                axios.interceptors.request.eject(requestInterceptor);
+            }
+            if (responseInterceptor !== undefined) {
+                axios.interceptors.response.eject(responseInterceptor);
+            }
+        };
+        
+        return cleanup;
+    }, []);
+
+    // 移除 loading 检查，因为 token 已经同步读取，不需要等待
+
+    // 加载中的占位组件
+    const LoadingFallback = () => (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            <CircularProgress />
+        </Box>
+    );
+
+    // 延迟渲染非关键组件，让页面先显示
+    const [showVideoBackground, setShowVideoBackground] = React.useState(false);
+    
+    React.useEffect(() => {
+        // 使用 requestIdleCallback 延迟渲染 VideoBackground
+        const timer = typeof window !== 'undefined' && 'requestIdleCallback' in window
+            ? window.requestIdleCallback(() => setShowVideoBackground(true), { timeout: 200 })
+            : setTimeout(() => setShowVideoBackground(true), 0);
+        
         return () => {
-            axios.interceptors.request.eject(requestInterceptor);
-            axios.interceptors.response.eject(responseInterceptor);
+            if (typeof timer === 'number') {
+                clearTimeout(timer);
+            } else if (typeof window !== 'undefined' && 'cancelIdleCallback' in window) {
+                window.cancelIdleCallback(timer);
+            }
         };
     }, []);
 
-    if (loading) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                <CircularProgress />
-            </Box>
-        );
-    }
-
     return (
         <Router>
-            <VideoBackground />
+            {showVideoBackground && <VideoBackground />}
+            {!showVideoBackground && (
+                <Box
+                    sx={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        zIndex: -1,
+                    }}
+                />
+            )}
             <Routes>
-                {/* 根路径：根据登录状态智能重定向 */}
+                {/* 根路径：根据登录状态智能重定向 - 使用更直接的重定向 */}
                 <Route 
                     path="/" 
                     element={
                         token ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
                     } 
                 />
+                {/* 登录页同步渲染，立即显示 */}
                 <Route path="/login" element={!token ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard" element={token ? <DashboardPage onLogout={handleLogout} /> : <Navigate to="/login" replace />} />
-                <Route path="/data-screen" element={token ? <DataScreenPage /> : <Navigate to="/login" replace />} />
-                <Route 
-                  path="/emission-factors" 
-                  element={
+                {/* 其他页面懒加载 */}
+                <Route path="/dashboard" element={
                     token ? (
-                      <ProtectedRoute requiredRole="admin">
-                        <EmissionFactorManagementPage />
-                      </ProtectedRoute>
+                        <Suspense fallback={<LoadingFallback />}>
+                            <DashboardPage onLogout={handleLogout} />
+                        </Suspense>
                     ) : (
-                      <Navigate to="/login" replace />
+                        <Navigate to="/login" replace />
                     )
-                  } 
-                /> {/* 排放因子管理路由 - 仅admin可访问 */}
-                <Route path="/upload-data" element={token ? <DataUploadPage /> : <Navigate to="/login" replace />} /> {/* 数据上传路由 */}
+                } />
+                <Route path="/data-screen" element={
+                    token ? (
+                        <Suspense fallback={<LoadingFallback />}>
+                            <DataScreenPage />
+                        </Suspense>
+                    ) : (
+                        <Navigate to="/login" replace />
+                    )
+                } />
+                <Route path="/upload-data" element={
+                    token ? (
+                        <Suspense fallback={<LoadingFallback />}>
+                            <DataUploadPage />
+                        </Suspense>
+                    ) : (
+                        <Navigate to="/login" replace />
+                    )
+                } />
                 <Route 
                   path="/EmissionFactorManagement" 
                   element={<EmissionFactorManagementRoute />}
-                /> {/* 新系统排放因子管理路由 - 仅admin可访问，未登录时显示专门的登录页面 */}
+                />
+                <Route path="/ai-assistant" element={
+                    token ? (
+                        <Suspense fallback={<LoadingFallback />}>
+                            <AIAssistantPage />
+                        </Suspense>
+                    ) : (
+                        <Navigate to="/login" replace />
+                    )
+                } />
                 <Route path="*" element={<Navigate to={token ? "/dashboard" : "/login"} replace />} />
             </Routes>
-            {/* 在所有页面的底部渲染AI助手 */}
-            <AiChat />
+            {/* 登录后且在非 AI 助手页时显示入口按钮，点击跳转到 /ai-assistant */}
+            {token && <AIAssistantEntryWhenNotOnPage />}
         </Router>
     );
 }

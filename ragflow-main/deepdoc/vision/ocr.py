@@ -21,9 +21,8 @@ import os
 
 from huggingface_hub import snapshot_download
 
-from common.file_utils import get_project_base_directory
-from common.misc_utils import pip_install_torch
-from common import settings
+from api.utils.file_utils import get_project_base_directory
+from rag.settings import PARALLEL_DEVICES
 from .operators import *  # noqa: F403
 from . import operators
 import math
@@ -84,7 +83,6 @@ def load_model(model_dir, nm, device_id: int | None = None):
 
     def cuda_is_available():
         try:
-            pip_install_torch()
             import torch
             target_id = 0 if device_id is None else device_id
             if torch.cuda.is_available() and torch.cuda.device_count() > target_id:
@@ -117,6 +115,7 @@ def load_model(model_dir, nm, device_id: int | None = None):
             providers=['CUDAExecutionProvider'],
             provider_options=[cuda_provider_options]
             )
+        run_options.add_run_config_entry("memory.enable_memory_arena_shrinkage", "gpu:" + str(provider_device_id))
         logging.info(f"load_model {model_file_path} uses GPU (device {provider_device_id}, gpu_mem_limit={cuda_provider_options['gpu_mem_limit']}, arena_strategy={arena_strategy})")
     else:
         sess = ort.InferenceSession(
@@ -553,10 +552,10 @@ class OCR:
                         "rag/res/deepdoc")
                 
                 # Append muti-gpus task to the list
-                if settings.PARALLEL_DEVICES > 0:
+                if PARALLEL_DEVICES > 0:
                     self.text_detector = []
                     self.text_recognizer = []
-                    for device_id in range(settings.PARALLEL_DEVICES):
+                    for device_id in range(PARALLEL_DEVICES):
                         self.text_detector.append(TextDetector(model_dir, device_id))
                         self.text_recognizer.append(TextRecognizer(model_dir, device_id))
                 else:
@@ -568,10 +567,10 @@ class OCR:
                                               local_dir=os.path.join(get_project_base_directory(), "rag/res/deepdoc"),
                                               local_dir_use_symlinks=False)
                 
-                if settings.PARALLEL_DEVICES > 0:
+                if PARALLEL_DEVICES > 0:
                     self.text_detector = []
                     self.text_recognizer = []
-                    for device_id in range(settings.PARALLEL_DEVICES):
+                    for device_id in range(PARALLEL_DEVICES):
                         self.text_detector.append(TextDetector(model_dir, device_id))
                         self.text_recognizer.append(TextRecognizer(model_dir, device_id))
                 else:
@@ -582,7 +581,7 @@ class OCR:
         self.crop_image_res_index = 0
 
     def get_rotate_crop_image(self, img, points):
-        """
+        '''
         img_height, img_width = img.shape[0:2]
         left = int(np.min(points[:, 0]))
         right = int(np.max(points[:, 0]))
@@ -591,7 +590,7 @@ class OCR:
         img_crop = img[top:bottom, left:right, :].copy()
         points[:, 0] = points[:, 0] - left
         points[:, 1] = points[:, 1] - top
-        """
+        '''
         assert len(points) == 4, "shape of points must be 4*2"
         img_crop_width = int(
             max(

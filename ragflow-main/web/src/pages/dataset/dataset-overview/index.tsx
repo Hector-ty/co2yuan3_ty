@@ -128,10 +128,6 @@ const FileLogsPage: FC = () => {
     setTopAllData((prev) => {
       return {
         ...prev,
-        downloads: {
-          ...prev.downloads,
-          success: topData?.downloaded || 0,
-        },
         processing: {
           value: topData?.processing || 0,
           success: topData?.finished || 0,

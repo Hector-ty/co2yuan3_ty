@@ -3,7 +3,7 @@ import { useUpdateKnowledge } from '@/hooks/use-knowledge-request';
 import { useMemo } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router';
+import { useParams } from 'umi';
 
 export function GeneralSavingButton() {
   const form = useFormContext();
@@ -58,11 +58,7 @@ export function SavingButton() {
       onClick={() => {
         (async () => {
           try {
-            let beValid = await form.trigger();
-            if (!beValid) {
-              const errors = form.formState.errors;
-              console.error('Validation errors:', errors);
-            }
+            let beValid = await form.formControl.trigger();
             if (beValid) {
               form.handleSubmit(async (values) => {
                 console.log('saveKnowledgeConfiguration: ', values);
@@ -71,19 +67,6 @@ export function SavingButton() {
                 await saveKnowledgeConfiguration({
                   kb_id,
                   ...values,
-                  parser_config: {
-                    ...values.parser_config,
-                    image_table_context_window:
-                      values.parser_config.image_table_context_window,
-                    image_context_size:
-                      values.parser_config.image_table_context_window,
-                    table_context_size:
-                      values.parser_config.image_table_context_window,
-                    // Unset children delimiter if this option is not enabled
-                    children_delimiter: values.parser_config.enable_children
-                      ? values.parser_config.children_delimiter
-                      : '',
-                  },
                 });
               })();
             }

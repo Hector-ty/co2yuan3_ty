@@ -45,6 +45,30 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
+// 编辑化石燃料时，根据“燃料类型(中文)”默认填入“燃料类型(英文)”
+const FUEL_TYPE_CN_TO_EN = {
+  无烟煤: 'solid',
+  烟煤: 'solid',
+  褐煤: 'solid',
+  燃料油: 'liquid',
+  汽油: 'liquid',
+  柴油: 'liquid',
+  煤油: 'liquid',
+  液化石油气: 'liquid',
+  液化天然气: 'liquid',
+  焦炉煤气: 'gas',
+  管道煤气: 'gas'
+};
+
+// 绿地碳汇因子：植被类型 name -> 中文显示
+const GREEN_SINK_VEGETATION_LABELS = { tree: '乔木', shrub: '灌木', herb: '草本' };
+const GREEN_SINK_VEGETATION_OPTIONS = [
+  { value: 'tree', label: '乔木' },
+  { value: 'shrub', label: '灌木' },
+  { value: 'herb', label: '草本' }
+];
+const GREEN_SINK_UNIT = 'tCO₂e/亩·年';
+
 const NewEmissionFactorManagementPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -58,6 +82,7 @@ const NewEmissionFactorManagementPage = () => {
   const [airConditioning, setAirConditioning] = useState([]);
   const [fireSuppression, setFireSuppression] = useState([]);
   const [indirectEmissions, setIndirectEmissions] = useState([]);
+  const [greenSinkFactors, setGreenSinkFactors] = useState([]);
   
   // Canvas粒子系统
   const canvasRef = useRef(null);
@@ -65,7 +90,7 @@ const NewEmissionFactorManagementPage = () => {
   
   // 对话框状态
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogType, setDialogType] = useState('fossil'); // 'fossil', 'fugitive', 'indirect'
+  const [dialogType, setDialogType] = useState('fossil'); // 'fossil', 'fugitive', 'indirect', 'greenSink'
   const [dialogMode, setDialogMode] = useState('add'); // 'add', 'edit'
   const [editingFactor, setEditingFactor] = useState(null);
   
@@ -85,7 +110,10 @@ const NewEmissionFactorManagementPage = () => {
     // 间接排放
     emissionTypeCn: '',
     emissionTypeEn: '',
-    remarks: '-'
+    remarks: '-',
+    // 绿地碳汇
+    vegetationType: '',
+    greenSinkEmissionFactor: ''
   });
 
   const fetchFactors = useCallback(async () => {
@@ -96,14 +124,22 @@ const NewEmissionFactorManagementPage = () => {
       const allFactors = response.data;
       
       // 分类数据
-      const fossil = allFactors.filter(f => f.category === 'fossil');
+      // 化石燃料包括：fossil类别，以及solid、liquid、gas类别（这些是实际的化石燃料数据）
+      const fossil = allFactors.filter(f => 
+        f.category === 'fossil' || 
+        f.category === 'solid' || 
+        f.category === 'liquid' || 
+        f.category === 'gas'
+      );
       const fugitive = allFactors.filter(f => f.category === 'fugitive');
       const indirect = allFactors.filter(f => f.category === 'indirect');
+      const greenSink = allFactors.filter(f => f.category === 'greenSink');
       
       setFossilFuels(fossil);
       setAirConditioning(fugitive.filter(f => f.fugitiveCategory === 'airConditioning'));
       setFireSuppression(fugitive.filter(f => f.fugitiveCategory === 'fireSuppression'));
       setIndirectEmissions(indirect);
+      setGreenSinkFactors(greenSink);
     } catch (err) {
       setError(err.response?.data?.message || '获取排放因子失败');
       console.error('Error fetching emission factors:', err);
@@ -146,7 +182,9 @@ const NewEmissionFactorManagementPage = () => {
       category: 'airConditioning',
       emissionTypeCn: '',
       emissionTypeEn: '',
-      remarks: '-'
+      remarks: '-',
+      vegetationType: '',
+      greenSinkEmissionFactor: ''
     });
     setDialogOpen(true);
   };
@@ -155,9 +193,60 @@ const NewEmissionFactorManagementPage = () => {
     setDialogType(type);
     setDialogMode('edit');
     setEditingFactor(factor);
+
+    if (type === 'greenSink') {
+      setFormData({
+        fuelTypeCn: '',
+        fuelTypeEn: '',
+        emissionFactor: '',
+        unit: '',
+        gwp: '-',
+        gasNameCn: '',
+        gasNameEn: '',
+        gwpValue: '',
+        category: 'airConditioning',
+        emissionTypeCn: '',
+        emissionTypeEn: '',
+        remarks: '-',
+        vegetationType: factor.name || '',
+        greenSinkEmissionFactor: factor.emissionFactor || factor.value?.toString() || ''
+      });
+      setDialogOpen(true);
+      return;
+    }
+
+    // 为编辑化石燃料排放因子提供更智能的默认值
+    let fuelTypeCn = factor.fuelTypeCn || '';
+    let fuelTypeEn = factor.fuelTypeEn || '';
+
+    if (type === 'fossil') {
+      // 如果缺少 fuelTypeCn / fuelTypeEn，尝试从 description 中解析，例如："柴油 (Diesel)"
+      if ((!fuelTypeCn || !fuelTypeEn) && typeof factor.description === 'string') {
+        const match = factor.description.match(/^(.+?)\s*\((.+?)\)\s*$/);
+        if (match) {
+          if (!fuelTypeCn) fuelTypeCn = match[1];
+          if (!fuelTypeEn) fuelTypeEn = match[2];
+        }
+      }
+      // 如果仍然没有，则回退到 name 或 type，保证编辑时有默认填入值
+      if (!fuelTypeCn && !fuelTypeEn) {
+        const baseName = factor.name || factor.type || '';
+        fuelTypeCn = baseName;
+        fuelTypeEn = baseName;
+      } else {
+        if (!fuelTypeCn) fuelTypeCn = factor.name || factor.type || '';
+        if (!fuelTypeEn) fuelTypeEn = factor.name || factor.type || '';
+      }
+      // 若中文名称在预定义映射中，则“燃料类型(英文)”默认显示为对应类别
+      const mappedEn = FUEL_TYPE_CN_TO_EN[fuelTypeCn.trim()];
+      if (mappedEn !== undefined) {
+        fuelTypeEn = mappedEn;
+      }
+    }
+
     setFormData({
-      fuelTypeCn: factor.fuelTypeCn || '',
-      fuelTypeEn: factor.fuelTypeEn || '',
+      fuelTypeCn,
+      fuelTypeEn,
       emissionFactor: factor.emissionFactor || factor.value?.toString() || '',
       unit: factor.unit || '',
       gwp: factor.gwp || '-',
@@ -167,7 +256,9 @@ const NewEmissionFactorManagementPage = () => {
       category: factor.fugitiveCategory || 'airConditioning',
       emissionTypeCn: factor.emissionTypeCn || '',
       emissionTypeEn: factor.emissionTypeEn || '',
-      remarks: factor.remarks || '-'
+      remarks: factor.remarks || '-',
+      vegetationType: '',
+      greenSinkEmissionFactor: ''
     });
     setDialogOpen(true);
   };
@@ -195,9 +286,13 @@ const NewEmissionFactorManagementPage = () => {
           setError('请填写所有必填字段');
           return;
         }
+        // 后端只接受 category 为 solid / liquid / gas / indirect，化石燃料用 solid|liquid|gas
+        const fossilCategory = ['solid', 'liquid', 'gas'].includes(formData.fuelTypeEn)
+          ? formData.fuelTypeEn
+          : 'solid';
         factorData = {
-          category: 'fossil',
-          type: 'fossil',
+          category: fossilCategory,
+          type: fossilCategory,
           name: formData.fuelTypeEn.toLowerCase().replace(/\s+/g, ''),
           value: parseFloat(formData.emissionFactor) || 0,
           unit: formData.unit,
@@ -241,6 +336,21 @@ const NewEmissionFactorManagementPage = () => {
           emissionTypeEn: formData.emissionTypeEn,
           emissionFactor: formData.emissionFactor,
           remarks: formData.remarks
+        };
+      } else if (dialogType === 'greenSink') {
+        if (!formData.vegetationType || formData.greenSinkEmissionFactor === '' || formData.greenSinkEmissionFactor === undefined) {
+          setError('请选择植被类型并填写排放因子');
+          return;
+        }
+        const veg = formData.vegetationType; // tree | shrub | herb
+        factorData = {
+          category: 'greenSink',
+          type: veg,
+          name: veg,
+          value: parseFloat(formData.greenSinkEmissionFactor) || 0,
+          unit: GREEN_SINK_UNIT,
+          description: `绿地碳汇因子-${GREEN_SINK_VEGETATION_LABELS[veg] || veg}`,
+          emissionFactor: String(formData.greenSinkEmissionFactor)
         };
       }
       
@@ -287,7 +397,7 @@ const NewEmissionFactorManagementPage = () => {
     return null;
   }
 
-  const totalCount = fossilFuels.length + airConditioning.length + fireSuppression.length + indirectEmissions.length;
+  const totalCount = fossilFuels.length + airConditioning.length + fireSuppression.length + indirectEmissions.length + greenSinkFactors.length;
 
   return (
     <Box 
@@ -1204,14 +1314,16 @@ const NewEmissionFactorManagementPage = () => {
             >
               迁移新系统数据
             </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleAdd('fossil')}
-              sx={{ bgcolor: 'white', color: 'primary.main', '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' } }}
-            >
-              新增因子
-            </Button>
+            {currentUser?.role === 'superadmin' && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => handleAdd('fossil')}
+                sx={{ bgcolor: 'white', color: 'primary.main', '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' } }}
+              >
+                新增因子
+              </Button>
+            )}
             <Button
               variant="outlined"
               startIcon={<LogoutIcon />}
@@ -1286,7 +1398,7 @@ const NewEmissionFactorManagementPage = () => {
                   化石燃料排放因子
                 </Typography>
                 <Chip label={`${fossilFuels.length}种`} size="small" color="primary" />
-                {currentUser?.role === 'admin' && (
+                {currentUser?.role === 'superadmin' && (
                   <Button
                     size="small"
                     startIcon={<AddIcon />}
@@ -1303,7 +1415,7 @@ const NewEmissionFactorManagementPage = () => {
             </AccordionSummary>
             <AccordionDetails>
               <TableContainer component={Paper} variant="outlined">
-                <Table>
+                <Table sx={{ minWidth: '100%' }}>
                   <TableHead>
                     <TableRow>
                       <TableCell>燃料类型</TableCell>
@@ -1311,19 +1423,19 @@ const NewEmissionFactorManagementPage = () => {
                       <TableCell>排放因子</TableCell>
                       <TableCell>单位</TableCell>
                       <TableCell>GWP</TableCell>
-                      {currentUser?.role === 'admin' && <TableCell>操作</TableCell>}
+                      {currentUser?.role === 'superadmin' && <TableCell align="right" sx={{ width: 120, minWidth: 120 }}>操作</TableCell>}
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {fossilFuels.map((factor) => (
                       <TableRow key={factor._id}>
                         <TableCell>{factor.fuelTypeCn || factor.name}</TableCell>
-                        <TableCell>{factor.fuelTypeEn || factor.name}</TableCell>
+                        <TableCell>{factor.fuelTypeEn || factor.type || factor.name}</TableCell>
                         <TableCell>{factor.emissionFactor || factor.value}</TableCell>
                         <TableCell>{factor.unit}</TableCell>
                         <TableCell>{factor.gwp || '-'}</TableCell>
-                        {currentUser?.role === 'admin' && (
-                          <TableCell>
+                        {currentUser?.role === 'superadmin' && (
+                          <TableCell align="right" sx={{ width: 120, minWidth: 120 }}>
                             <IconButton size="small" color="primary" onClick={() => handleEdit(factor, 'fossil')}>
                               <EditIcon fontSize="small" />
                             </IconButton>
@@ -1348,7 +1460,7 @@ const NewEmissionFactorManagementPage = () => {
                   逸散排放因子
                 </Typography>
                 <Chip label={`${airConditioning.length + fireSuppression.length}种`} size="small" color="warning" />
-                {currentUser?.role === 'admin' && (
+                {currentUser?.role === 'superadmin' && (
                   <Button
                     size="small"
                     startIcon={<AddIcon />}
@@ -1372,7 +1484,7 @@ const NewEmissionFactorManagementPage = () => {
                       空调系统 / Air Conditioning System ({airConditioning.length}种)
                     </Typography>
                     <TableContainer component={Paper} variant="outlined">
-                      <Table>
+                      <Table sx={{ minWidth: '100%' }}>
                         <TableHead>
                           <TableRow>
                             <TableCell>气体名称</TableCell>
@@ -1380,7 +1492,7 @@ const NewEmissionFactorManagementPage = () => {
                             <TableCell>GWP值</TableCell>
                             <TableCell>排放因子</TableCell>
                             <TableCell>单位</TableCell>
-                            {currentUser?.role === 'admin' && <TableCell>操作</TableCell>}
+                            {currentUser?.role === 'superadmin' && <TableCell align="right" sx={{ width: 120, minWidth: 120 }}>操作</TableCell>}
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -1391,8 +1503,8 @@ const NewEmissionFactorManagementPage = () => {
                               <TableCell>{factor.gwpValue || '-'}</TableCell>
                               <TableCell>{factor.emissionFactor || factor.value}</TableCell>
                               <TableCell>{factor.unit}</TableCell>
-                              {currentUser?.role === 'admin' && (
-                                <TableCell>
+                              {currentUser?.role === 'superadmin' && (
+                                <TableCell align="right" sx={{ width: 120, minWidth: 120 }}>
                                   <IconButton size="small" color="primary" onClick={() => handleEdit(factor, 'fugitive')}>
                                     <EditIcon fontSize="small" />
                                   </IconButton>
@@ -1416,7 +1528,7 @@ const NewEmissionFactorManagementPage = () => {
                       灭火系统 / Fire Suppression System ({fireSuppression.length}种)
                     </Typography>
                     <TableContainer component={Paper} variant="outlined">
-                      <Table>
+                      <Table sx={{ minWidth: '100%' }}>
                         <TableHead>
                           <TableRow>
                             <TableCell>气体名称</TableCell>
@@ -1424,7 +1536,7 @@ const NewEmissionFactorManagementPage = () => {
                             <TableCell>GWP值</TableCell>
                             <TableCell>排放因子</TableCell>
                             <TableCell>单位</TableCell>
-                            {currentUser?.role === 'admin' && <TableCell>操作</TableCell>}
+                            {currentUser?.role === 'superadmin' && <TableCell align="right" sx={{ width: 120, minWidth: 120 }}>操作</TableCell>}
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -1435,8 +1547,8 @@ const NewEmissionFactorManagementPage = () => {
                               <TableCell>{factor.gwpValue || '-'}</TableCell>
                               <TableCell>{factor.emissionFactor || factor.value}</TableCell>
                               <TableCell>{factor.unit}</TableCell>
-                              {currentUser?.role === 'admin' && (
-                                <TableCell>
+                              {currentUser?.role === 'superadmin' && (
+                                <TableCell align="right" sx={{ width: 120, minWidth: 120 }}>
                                   <IconButton size="small" color="primary" onClick={() => handleEdit(factor, 'fugitive')}>
                                     <EditIcon fontSize="small" />
                                   </IconButton>
@@ -1464,7 +1576,7 @@ const NewEmissionFactorManagementPage = () => {
                   间接排放因子
                 </Typography>
                 <Chip label={`${indirectEmissions.length}种`} size="small" color="success" />
-                {currentUser?.role === 'admin' && (
+                {currentUser?.role === 'superadmin' && (
                   <Button
                     size="small"
                     startIcon={<AddIcon />}
@@ -1481,7 +1593,7 @@ const NewEmissionFactorManagementPage = () => {
             </AccordionSummary>
             <AccordionDetails>
               <TableContainer component={Paper} variant="outlined">
-                <Table>
+                <Table sx={{ minWidth: '100%' }}>
                   <TableHead>
                     <TableRow>
                       <TableCell>排放类型</TableCell>
@@ -1489,7 +1601,7 @@ const NewEmissionFactorManagementPage = () => {
                       <TableCell>排放因子</TableCell>
                       <TableCell>单位</TableCell>
                       <TableCell>备注</TableCell>
-                      {currentUser?.role === 'admin' && <TableCell>操作</TableCell>}
+                      {currentUser?.role === 'superadmin' && <TableCell align="right" sx={{ width: 120, minWidth: 120 }}>操作</TableCell>}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -1500,9 +1612,68 @@ const NewEmissionFactorManagementPage = () => {
                         <TableCell>{factor.emissionFactor || factor.value}</TableCell>
                         <TableCell>{factor.unit}</TableCell>
                         <TableCell>{factor.remarks || '-'}</TableCell>
-                        {currentUser?.role === 'admin' && (
-                          <TableCell>
+                        {currentUser?.role === 'superadmin' && (
+                          <TableCell align="right" sx={{ width: 120, minWidth: 120 }}>
                             <IconButton size="small" color="primary" onClick={() => handleEdit(factor, 'indirect')}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton size="small" color="error" onClick={() => handleDelete(factor)}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </AccordionDetails>
+          </Accordion>
+
+          {/* 绿地碳汇因子 */}
+          <Accordion defaultExpanded sx={{ bgcolor: 'rgba(0, 150, 136, 0.08)', position: 'relative', zIndex: 1 }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#00695c' }}>
+                  绿地碳汇因子
+                </Typography>
+                <Chip label={`${greenSinkFactors.length}种`} size="small" sx={{ bgcolor: '#00695c', color: '#fff' }} />
+                {currentUser?.role === 'superadmin' && (
+                  <Button
+                    size="small"
+                    startIcon={<AddIcon />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAdd('greenSink');
+                    }}
+                    sx={{ ml: 'auto', color: '#00695c', borderColor: '#00695c', '&:hover': { borderColor: '#004d40', bgcolor: 'rgba(0, 150, 136, 0.08)' } }}
+                    variant="outlined"
+                  >
+                    添加
+                  </Button>
+                )}
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails>
+              <TableContainer component={Paper} variant="outlined">
+                <Table sx={{ minWidth: '100%' }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>植被类型</TableCell>
+                      <TableCell>排放因子</TableCell>
+                      <TableCell>单位</TableCell>
+                      {currentUser?.role === 'superadmin' && <TableCell align="right" sx={{ width: 120, minWidth: 120 }}>操作</TableCell>}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {greenSinkFactors.map((factor) => (
+                      <TableRow key={factor._id}>
+                        <TableCell>{GREEN_SINK_VEGETATION_LABELS[factor.name] || factor.name}</TableCell>
+                        <TableCell>{factor.emissionFactor ?? factor.value}</TableCell>
+                        <TableCell>{factor.unit || GREEN_SINK_UNIT}</TableCell>
+                        {currentUser?.role === 'superadmin' && (
+                          <TableCell align="right" sx={{ width: 120, minWidth: 120 }}>
+                            <IconButton size="small" sx={{ color: '#00695c' }} onClick={() => handleEdit(factor, 'greenSink')}>
                               <EditIcon fontSize="small" />
                             </IconButton>
                             <IconButton size="small" color="error" onClick={() => handleDelete(factor)}>
@@ -1524,7 +1695,7 @@ const NewEmissionFactorManagementPage = () => {
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
           {dialogMode === 'add' ? '添加' : '编辑'}
-          {dialogType === 'fossil' ? '化石燃料' : dialogType === 'fugitive' ? '逸散' : '间接'}排放因子
+          {dialogType === 'fossil' ? '化石燃料' : dialogType === 'fugitive' ? '逸散' : dialogType === 'indirect' ? '间接' : '绿地碳汇'}排放因子
         </DialogTitle>
         <DialogContent>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -1670,6 +1841,41 @@ const NewEmissionFactorManagementPage = () => {
                 label="备注"
                 value={formData.remarks}
                 onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+              />
+            </>
+          )}
+
+          {dialogType === 'greenSink' && (
+            <>
+              <FormControl fullWidth margin="normal" required>
+                <InputLabel>植被类型</InputLabel>
+                <Select
+                  value={formData.vegetationType}
+                  onChange={(e) => setFormData({ ...formData, vegetationType: e.target.value })}
+                  label="植被类型"
+                >
+                  {GREEN_SINK_VEGETATION_OPTIONS.map((opt) => (
+                    <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <TextField
+                fullWidth
+                margin="normal"
+                label="排放因子"
+                type="number"
+                inputProps={{ step: 0.01, min: 0 }}
+                value={formData.greenSinkEmissionFactor}
+                onChange={(e) => setFormData({ ...formData, greenSinkEmissionFactor: e.target.value })}
+                required
+              />
+              <TextField
+                fullWidth
+                margin="normal"
+                label="单位"
+                value={GREEN_SINK_UNIT}
+                InputProps={{ readOnly: true }}
+                helperText="绿地碳汇因子固定单位"
               />
             </>
           )}

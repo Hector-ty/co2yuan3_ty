@@ -1,6 +1,5 @@
 import { variableEnabledFieldMap } from '@/constants/chat';
 import { TFunction } from 'i18next';
-import { camelCase } from 'lodash';
 import omit from 'lodash/omit';
 
 // chat model setting and generate operator
@@ -33,12 +32,11 @@ export function buildOptions(
   data: Record<string, any>,
   t?: TFunction<['translation', ...string[]], undefined>,
   prefix?: string,
-  camel: boolean = false,
 ) {
   if (t) {
     return Object.values(data).map((val) => ({
       label: t(
-        `${prefix ? prefix + '.' : ''}${typeof val === 'string' ? (camel ? camelCase(val) : val.toLowerCase()) : val}`,
+        `${prefix ? prefix + '.' : ''}${typeof val === 'string' ? val.toLowerCase() : val}`,
       ),
       value: val,
     }));

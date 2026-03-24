@@ -1,4 +1,4 @@
-import { useFetchUserInfo } from '@/hooks/use-user-setting-request';
+import { useFetchUserInfo } from '@/hooks/user-setting-hooks';
 import { PropsWithChildren } from 'react';
 
 export function SharedBadge({ children }: PropsWithChildren) {

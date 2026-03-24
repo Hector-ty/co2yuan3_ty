@@ -1,5 +1,6 @@
 // server/controllers/ai.js
 const ollamaService = require('../services/ollamaService');
+const AIConversation = require('../models/AIConversation');
 
 exports.handleChat = async (req, res) => {
     const { question } = req.body;
@@ -108,6 +109,87 @@ exports.handleChatStream = async (req, res) => {
         res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
         res.end();
     }
+};
+
+// 获取当前用户的历史对话列表（按创建时间倒序，仅当前用户）
+exports.listConversations = async (req, res) => {
+  try {
+    const list = await AIConversation.find({ user: req.user._id })
+      .sort({ createdAt: -1 })
+      .lean();
+    console.log('[AI] listConversations: user=%s, count=%d', req.user._id, list.length);
+    const formatted = list.map((doc) => ({
+      id: doc._id.toString(),
+      conversationId: doc.conversationId || null,
+      title: doc.title,
+      createdAt: doc.createdAt.getTime ? doc.createdAt.getTime() : doc.createdAt,
+    }));
+    res.json(formatted);
+  } catch (error) {
+    console.error('获取 AI 对话列表失败:', error);
+    res.status(500).json({ error: error.message || '获取对话列表失败' });
+  }
+};
+
+// 创建新对话（仅当前用户）
+exports.createConversation = async (req, res) => {
+  try {
+    const { title } = req.body;
+    const titleText = title && String(title).trim() ? String(title).trim() : `新对话 ${new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`;
+    const doc = await AIConversation.create({
+      user: req.user._id,
+      title: titleText,
+    });
+    console.log('[AI] createConversation: id=%s, user=%s', doc._id, req.user._id);
+    res.status(201).json({
+      id: doc._id.toString(),
+      conversationId: doc.conversationId || null,
+      title: doc.title,
+      createdAt: doc.createdAt.getTime ? doc.createdAt.getTime() : doc.createdAt,
+    });
+  } catch (error) {
+    console.error('创建 AI 对话失败:', error);
+    res.status(500).json({ error: error.message || '创建对话失败' });
+  }
+};
+
+// 更新对话（仅当前用户的记录）
+exports.updateConversation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { conversationId, title } = req.body;
+    const doc = await AIConversation.findOne({ _id: id, user: req.user._id });
+    if (!doc) {
+      return res.status(404).json({ error: '对话不存在或无权操作' });
+    }
+    if (conversationId !== undefined) doc.conversationId = conversationId ? String(conversationId) : null;
+    if (title !== undefined && String(title).trim()) doc.title = String(title).trim();
+    await doc.save();
+    res.json({
+      id: doc._id.toString(),
+      conversationId: doc.conversationId || null,
+      title: doc.title,
+      createdAt: doc.createdAt.getTime ? doc.createdAt.getTime() : doc.createdAt,
+    });
+  } catch (error) {
+    console.error('更新 AI 对话失败:', error);
+    res.status(500).json({ error: error.message || '更新对话失败' });
+  }
+};
+
+// 删除对话（仅当前用户的记录）
+exports.deleteConversation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const doc = await AIConversation.findOneAndDelete({ _id: id, user: req.user._id });
+    if (!doc) {
+      return res.status(404).json({ error: '对话不存在或无权操作' });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('删除 AI 对话失败:', error);
+    res.status(500).json({ error: error.message || '删除对话失败' });
+  }
 };
 
 // 健康检查端点

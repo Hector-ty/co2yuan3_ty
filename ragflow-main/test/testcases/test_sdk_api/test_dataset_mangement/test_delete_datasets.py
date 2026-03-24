@@ -33,9 +33,9 @@ class TestAuthorization:
     )
     def test_auth_invalid(self, invalid_auth, expected_message):
         client = RAGFlow(invalid_auth, HOST_ADDRESS)
-        with pytest.raises(Exception) as exception_info:
+        with pytest.raises(Exception) as excinfo:
             client.delete_datasets()
-        assert str(exception_info.value) == expected_message
+        assert str(excinfo.value) == expected_message
 
 
 class TestCapability:
@@ -71,7 +71,6 @@ class TestDatasetsDelete:
         ids=["single_dataset", "multiple_datasets"],
     )
     def test_ids(self, client, add_datasets_func, func, remaining):
-        payload = None
         if callable(func):
             payload = func([dataset.id for dataset in add_datasets_func])
         client.delete_datasets(**payload)
@@ -101,9 +100,9 @@ class TestDatasetsDelete:
     @pytest.mark.usefixtures("add_dataset_func")
     def test_id_not_uuid(self, client):
         payload = {"ids": ["not_uuid"]}
-        with pytest.raises(Exception) as exception_info:
+        with pytest.raises(Exception) as excinfo:
             client.delete_datasets(**payload)
-        assert "Invalid UUID1 format" in str(exception_info.value), str(exception_info.value)
+        assert "Invalid UUID1 format" in str(excinfo.value), str(excinfo.value)
 
         datasets = client.list_datasets()
         assert len(datasets) == 1, str(datasets)
@@ -112,17 +111,17 @@ class TestDatasetsDelete:
     @pytest.mark.usefixtures("add_dataset_func")
     def test_id_not_uuid1(self, client):
         payload = {"ids": [uuid.uuid4().hex]}
-        with pytest.raises(Exception) as exception_info:
+        with pytest.raises(Exception) as excinfo:
             client.delete_datasets(**payload)
-        assert "Invalid UUID1 format" in str(exception_info.value), str(exception_info.value)
+        assert "Invalid UUID1 format" in str(excinfo.value), str(excinfo.value)
 
     @pytest.mark.p2
     @pytest.mark.usefixtures("add_dataset_func")
     def test_id_wrong_uuid(self, client):
         payload = {"ids": ["d94a8dc02c9711f0930f7fbc369eab6d"]}
-        with pytest.raises(Exception) as exception_info:
+        with pytest.raises(Exception) as excinfo:
             client.delete_datasets(**payload)
-        assert "lacks permission for dataset" in str(exception_info.value), str(exception_info.value)
+        assert "lacks permission for dataset" in str(excinfo.value), str(excinfo.value)
 
         datasets = client.list_datasets()
         assert len(datasets) == 1, str(datasets)
@@ -139,9 +138,9 @@ class TestDatasetsDelete:
     def test_ids_partial_invalid(self, client, add_datasets_func, func):
         if callable(func):
             payload = func([dataset.id for dataset in add_datasets_func])
-        with pytest.raises(Exception) as exception_info:
+        with pytest.raises(Exception) as excinfo:
             client.delete_datasets(**payload)
-        assert "lacks permission for dataset" in str(exception_info.value), str(exception_info.value)
+        assert "lacks permission for dataset" in str(excinfo.value), str(excinfo.value)
 
         datasets = client.list_datasets()
         assert len(datasets) == 3, str(datasets)
@@ -150,9 +149,9 @@ class TestDatasetsDelete:
     def test_ids_duplicate(self, client, add_datasets_func):
         dataset_ids = [dataset.id for dataset in add_datasets_func]
         payload = {"ids": dataset_ids + dataset_ids}
-        with pytest.raises(Exception) as exception_info:
+        with pytest.raises(Exception) as excinfo:
             client.delete_datasets(**payload)
-        assert "Duplicate ids:" in str(exception_info.value), str(exception_info.value)
+        assert "Duplicate ids:" in str(excinfo.value), str(excinfo.value)
 
         datasets = client.list_datasets()
         assert len(datasets) == 3, str(datasets)
@@ -163,17 +162,17 @@ class TestDatasetsDelete:
         payload = {"ids": dataset_ids}
         client.delete_datasets(**payload)
 
-        with pytest.raises(Exception) as exception_info:
+        with pytest.raises(Exception) as excinfo:
             client.delete_datasets(**payload)
-        assert "lacks permission for dataset" in str(exception_info.value), str(exception_info.value)
+        assert "lacks permission for dataset" in str(excinfo.value), str(excinfo.value)
 
     @pytest.mark.p2
     @pytest.mark.usefixtures("add_dataset_func")
     def test_field_unsupported(self, client):
         payload = {"unknown_field": "unknown_field"}
-        with pytest.raises(Exception) as exception_info:
+        with pytest.raises(Exception) as excinfo:
             client.delete_datasets(**payload)
-        assert "got an unexpected keyword argument 'unknown_field'" in str(exception_info.value), str(exception_info.value)
+        assert "got an unexpected keyword argument 'unknown_field'" in str(excinfo.value), str(excinfo.value)
 
         datasets = client.list_datasets()
         assert len(datasets) == 1, str(datasets)

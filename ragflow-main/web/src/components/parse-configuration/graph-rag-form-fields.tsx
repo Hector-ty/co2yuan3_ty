@@ -1,7 +1,6 @@
 import { DocumentParserType } from '@/constants/knowledge';
 import { useTranslate } from '@/hooks/common-hooks';
 import { cn } from '@/lib/utils';
-import { LLMModelItem } from '@/pages/dataset/dataset-setting/configuration/common-item';
 import {
   GenerateLogButton,
   GenerateType,
@@ -137,10 +136,6 @@ const GraphRagItems = ({
 
   return (
     <FormContainer className={cn({ 'mb-4': marginBottom }, className)}>
-      <LLMModelItem
-        label={t('globalIndexModel')}
-        name={'parser_config.llm_id'}
-      />
       <UseGraphRagFormField
         data={data}
         onDelete={onDelete}

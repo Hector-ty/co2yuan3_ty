@@ -27,6 +27,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import { useRegions } from '../hooks/useRegions';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
 const UserManagementPage = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +38,59 @@ const UserManagementPage = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredUsers, setFilteredUsers] = useState([]);
+  const [currentUserRole, setCurrentUserRole] = useState(null);
+
+  // 获取当前登录用户的角色
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    setCurrentUserRole(user?.role || null);
+  }, []);
+
+  // 根据当前用户角色获取允许的角色列表
+  const getAllowedRoles = () => {
+    if (!currentUserRole) return [];
+    
+    // 超级管理员可以设置所有角色
+    if (currentUserRole === 'superadmin') {
+      return [
+        { value: 'superadmin', label: '超级管理员' },
+        { value: 'province_admin', label: '省级管理员' },
+        { value: 'city_admin', label: '市级管理员' },
+        { value: 'district_admin', label: '区县级管理员' },
+        { value: 'organization_user', label: '机构用户' }
+      ];
+    }
+    
+    // 省级管理员：可以设置 省级管理员、市级管理员、区县级管理员、机构用户
+    if (currentUserRole === 'province_admin') {
+      return [
+        { value: 'province_admin', label: '省级管理员' },
+        { value: 'city_admin', label: '市级管理员' },
+        { value: 'district_admin', label: '区县级管理员' },
+        { value: 'organization_user', label: '机构用户' }
+      ];
+    }
+    
+    // 市级管理员：可以设置 市级管理员、区县级管理员、机构用户
+    if (currentUserRole === 'city_admin') {
+      return [
+        { value: 'city_admin', label: '市级管理员' },
+        { value: 'district_admin', label: '区县级管理员' },
+        { value: 'organization_user', label: '机构用户' }
+      ];
+    }
+    
+    // 区县级管理员：可以设置 区县级管理员、机构用户
+    if (currentUserRole === 'district_admin') {
+      return [
+        { value: 'district_admin', label: '区县级管理员' },
+        { value: 'organization_user', label: '机构用户' }
+      ];
+    }
+    
+    // 其他角色或未知角色，返回空数组
+    return [];
+  };
 
   const regionMap = useMemo(() => {
     if (!regions || regions.length === 0) return {};
@@ -71,22 +126,23 @@ const UserManagementPage = () => {
         setLoading(false);
         return;
       }
-      const config = {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      };
-      const res = await axios.get('/api/auth/users', config);
+      // 使用统一的 API_BASE_URL，axios 拦截器会自动添加 Authorization header
+      const res = await axios.get(`${API_BASE_URL}/auth/users`);
+      console.log('获取用户列表响应:', res.data); // 添加调试日志
       if (res.data && res.data.success && res.data.data) {
-        setUsers(res.data.data);
+        // 过滤掉 root 用户（如果存在）
+        const filteredUsers = res.data.data.filter(user => user.email !== 'root@root.com');
+        setUsers(filteredUsers);
+        console.log('设置用户列表:', filteredUsers); // 添加调试日志
       } else {
+        console.warn('响应数据格式不正确:', res.data);
         setUsers([]);
       }
       setLoading(false);
     } catch (err) {
       console.error('获取用户列表失败:', err);
-      const errorMessage = err.response?.data?.error || err.message || '获取用户列表失败';
+      console.error('错误详情:', err.response?.data); // 添加详细错误日志
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message || '获取用户列表失败';
       setError(errorMessage);
       setUsers([]);
       setLoading(false);
@@ -100,18 +156,14 @@ const UserManagementPage = () => {
 
   const handleRoleChange = async (userId, newRole) => {
     try {
-      const token = localStorage.getItem('token');
-      const config = {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      };
-      await axios.put(`/api/auth/users/${userId}/role`, { role: newRole }, config);
+      // 使用统一的 API_BASE_URL，axios 拦截器会自动添加 Authorization header
+      await axios.put(`${API_BASE_URL}/auth/users/${userId}/role`, { role: newRole });
       // Refresh users after role change
       fetchUsers();
     } catch (err) {
-      setError('Failed to update user role.');
+      console.error('更新用户角色失败:', err);
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || '更新用户角色失败';
+      setError(errorMessage);
     }
   };
 
@@ -127,19 +179,15 @@ const UserManagementPage = () => {
 
   const handleDeleteConfirm = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const config = {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      };
-      await axios.delete(`/api/auth/users/${selectedUser._id}`, config);
+      // 使用统一的 API_BASE_URL，axios 拦截器会自动添加 Authorization header
+      await axios.delete(`${API_BASE_URL}/auth/users/${selectedUser._id}`);
       // Refresh users after delete
       fetchUsers();
       handleClose();
     } catch (err) {
-      setError('Failed to delete user.');
+      console.error('删除用户失败:', err);
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || '删除用户失败';
+      setError(errorMessage);
     }
   };
 
@@ -152,7 +200,13 @@ const UserManagementPage = () => {
   }
 
   return (
-    <Box sx={{ p: { xs: 1.5, sm: 3 } }}>
+    <Box sx={{ 
+      p: { xs: 1.5, sm: 3 },
+      width: '100%',
+      maxWidth: '100%',
+      minWidth: 0, // 允许收缩到最小
+      boxSizing: 'border-box' // 确保padding包含在宽度内
+    }}>
       <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
         用户权限管理
       </Typography>
@@ -169,7 +223,7 @@ const UserManagementPage = () => {
           <Typography color="warning.dark" variant="body2">加载地区数据失败，地区名称可能无法显示</Typography>
         </Box>
       )}
-      <Box sx={{ mb: 2 }}>
+      <Box sx={{ mb: 2, width: '100%' }}>
         <TextField
           fullWidth
           variant="outlined"
@@ -189,27 +243,35 @@ const UserManagementPage = () => {
       <TableContainer 
         component={Paper}
         sx={{
-          overflowX: 'auto',
-          WebkitOverflowScrolling: 'touch',
+          width: '100%',
+          maxWidth: '100%',
+          overflowX: 'visible', // 移除横向滚动，改为可见
           '& .MuiTable-root': {
-            minWidth: 600
+            width: '100%',
+            tableLayout: 'auto' // 自动表格布局，让列宽自适应
           }
         }}
       >
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ minWidth: 150 }}>邮箱</TableCell>
-              <TableCell sx={{ minWidth: 120 }}>单位名称</TableCell>
-              <TableCell sx={{ minWidth: 120 }}>地区</TableCell>
-              <TableCell sx={{ minWidth: 100 }}>角色</TableCell>
-              <TableCell sx={{ minWidth: 80 }}>操作</TableCell>
+              <TableCell sx={{ width: '10%' }}>邮箱</TableCell>
+              <TableCell sx={{ width: '10%' }}>单位名称</TableCell>
+              <TableCell sx={{ width: '10%' }}>统一社会信用代码</TableCell>
+              <TableCell sx={{ width: '10%' }}>地区</TableCell>
+              <TableCell sx={{ width: '12%' }}>详细地址</TableCell>
+              <TableCell sx={{ width: '8%' }}>建筑面积(m²)</TableCell>
+              <TableCell sx={{ width: '8%' }}>用能人数(人)</TableCell>
+              <TableCell sx={{ width: '8%' }}>填报联系人</TableCell>
+              <TableCell sx={{ width: '10%' }}>联系电话</TableCell>
+              <TableCell sx={{ width: '8%' }}>角色</TableCell>
+              <TableCell sx={{ width: '6%' }}>操作</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={11} align="center" sx={{ py: 4 }}>
                   <Typography variant="body2" color="text.secondary">
                     {loading ? '加载中...' : searchTerm ? '未找到匹配的用户' : '暂无用户数据'}
                   </Typography>
@@ -220,16 +282,61 @@ const UserManagementPage = () => {
                 <TableRow key={user._id}>
                   <TableCell sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>{user.email}</TableCell>
                   <TableCell sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>{user.unitName}</TableCell>
+                  <TableCell sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>{user.creditCode || '-'}</TableCell>
                   <TableCell sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>{regionMap[user.region] ? `${regionMap[user.region]} (${user.region})` : user.region}</TableCell>
+                  <TableCell sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>{user.address || '-'}</TableCell>
+                  <TableCell sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>{user.buildingArea || '-'}</TableCell>
+                  <TableCell sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>{user.personnelCount || '-'}</TableCell>
+                  <TableCell sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>{user.contactPerson || '-'}</TableCell>
+                  <TableCell sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>{user.contactPhone || '-'}</TableCell>
                   <TableCell>
                     <FormControl size="small" fullWidth>
                       <Select
                         value={user.role}
                         onChange={(e) => handleRoleChange(user._id, e.target.value)}
+                        MenuProps={{
+                          PaperProps: {
+                            sx: {
+                              maxHeight: 300,
+                              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                              backdropFilter: 'blur(10px)',
+                              color: 'white',
+                            },
+                          },
+                        }}
+                        sx={{
+                          color: 'white',
+                          '& .MuiSelect-select': {
+                            color: 'white',
+                          },
+                          '& .MuiSelect-icon': {
+                            color: 'white',
+                          },
+                          '& .MuiInputBase-input': {
+                            color: 'white',
+                          },
+                          '& .MuiOutlinedInput-input': {
+                            color: 'white',
+                          },
+                          '.MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'rgba(255,255,255,0.3)',
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'rgba(255,255,255,0.6)',
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#66bb6a',
+                          },
+                          '.MuiSvgIcon-root': {
+                            color: 'white',
+                          },
+                        }}
                       >
-                        <MenuItem value="admin">管理员</MenuItem>
-                        <MenuItem value="editor">编辑员</MenuItem>
-                        <MenuItem value="viewer">观察员</MenuItem>
+                        {getAllowedRoles().map((role) => (
+                          <MenuItem key={role.value} value={role.value} sx={{ color: 'white' }}>
+                            {role.label}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </TableCell>

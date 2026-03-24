@@ -1,0 +1,40 @@
+<view class="dashboard-page">
+  <view class="card">
+    <view class="card-title">关键指标</view>
+    <view wx:if="{{loading}}" class="loading-text">加载中...</view>
+    <view wx:elif="{{error}}" class="error-text">{{error}}</view>
+    <view wx:elif="{{kpi}}">
+      <view class="kpi-row">
+        <view class="kpi-block">
+          <text class="kpi-label">总排放量 (tCO₂)</text>
+          <text class="kpi-value">{{kpi.totalEmissions}}</text>
+        </view>
+        <view class="kpi-block">
+          <text class="kpi-label">人均排放 (tCO₂/人)</text>
+          <text class="kpi-value">{{kpi.perCapitaEmissions}}</text>
+        </view>
+      </view>
+      <view class="kpi-row">
+        <view class="kpi-block">
+          <text class="kpi-label">单位面积排放 (tCO₂/㎡)</text>
+          <text class="kpi-value">{{kpi.perAreaEmissions}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">最近提交记录</view>
+    <view wx:if="{{loading}}" class="loading-text">加载中...</view>
+    <view wx:elif="{{recentList.length === 0}}" class="empty-text">暂无数据</view>
+    <block wx:for="{{recentList}}" wx:key="_id">
+      <view class="list-item">
+        <view class="list-title">{{item.year}} 年 · {{item.accountName || '未知机构'}}</view>
+        <view class="list-sub">
+          <text>总排放：{{item.totalEmissions}} tCO₂</text>
+        </view>
+      </view>
+    </block>
+  </view>
+</view>
+

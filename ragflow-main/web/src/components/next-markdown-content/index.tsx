@@ -5,6 +5,7 @@ import { getExtension } from '@/utils/document-util';
 import DOMPurify from 'dompurify';
 import { memo, useCallback, useEffect, useMemo } from 'react';
 import Markdown from 'react-markdown';
+import reactStringReplace from 'react-string-replace';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
@@ -12,30 +13,30 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import { visitParents } from 'unist-util-visit-parents';
 
+import { useFetchDocumentThumbnailsByIds } from '@/hooks/document-hooks';
 import { useTranslation } from 'react-i18next';
 
 import 'katex/dist/katex.min.css'; // `rehype-katex` does not import the CSS for you
 
 import {
-  currentReg,
   preprocessLaTeX,
-  replaceTextByOldReg,
   replaceThinkToSection,
+  showImage,
 } from '@/utils/chat';
 
-import { useFetchDocumentThumbnailsByIds } from '@/hooks/use-document-request';
 import { cn } from '@/lib/utils';
+import { currentReg, replaceTextByOldReg } from '@/pages/chat/utils';
 import classNames from 'classnames';
 import { omit } from 'lodash';
 import { pipe } from 'lodash/fp';
-import reactStringReplace from 'react-string-replace';
+import { CircleAlert } from 'lucide-react';
 import { Button } from '../ui/button';
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from '../ui/hover-card';
-import styles from './index.module.less';
+import styles from './index.less';
 
 const getChunkIndex = (match: string) => Number(match);
 // TODO: The display of the table is inconsistent with the display previously placed in the MessageItem.
@@ -212,12 +213,30 @@ function MarkdownContent({
       let replacedText = reactStringReplace(text, currentReg, (match, i) => {
         const chunkIndex = getChunkIndex(match);
 
-        return (
+        const { documentUrl, fileExtension, imageId, chunkItem, documentId } =
+          getReferenceInfo(chunkIndex);
+
+        const docType = chunkItem?.doc_type;
+
+        return showImage(docType) ? (
+          <Image
+            id={imageId}
+            className={styles.referenceInnerChunkImage}
+            onClick={
+              documentId
+                ? handleDocumentButtonClick(
+                    documentId,
+                    chunkItem,
+                    fileExtension === 'pdf',
+                    documentUrl,
+                  )
+                : () => {}
+            }
+          ></Image>
+        ) : (
           <HoverCard key={i}>
             <HoverCardTrigger>
-              <span className="text-text-secondary bg-bg-card rounded-2xl px-1 mx-1 text-nowrap">
-                Fig. {chunkIndex + 1}
-              </span>
+              <CircleAlert className="size-4 inline-block" />
             </HoverCardTrigger>
             <HoverCardContent className="max-w-3xl">
               {renderPopoverContent(chunkIndex)}
@@ -228,7 +247,7 @@ function MarkdownContent({
 
       return replacedText;
     },
-    [renderPopoverContent],
+    [renderPopoverContent, getReferenceInfo, handleDocumentButtonClick],
   );
 
   return (

@@ -19,7 +19,7 @@ function ParserNode({
 }: NodeProps<BaseNode<ParserFormSchemaType>>) {
   const { t } = useTranslation();
   return (
-    <NodeWrapper selected={selected} id={id}>
+    <NodeWrapper selected={selected}>
       <CommonHandle
         id={NodeHandleId.End}
         type="target"

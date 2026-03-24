@@ -1,16 +1,15 @@
 import { NextMessageInput } from '@/components/message-input/next';
 import MessageItem from '@/components/message-item';
-import PdfSheet from '@/components/pdf-drawer';
+import PdfDrawer from '@/components/pdf-drawer';
 import { useClickDrawer } from '@/components/pdf-drawer/hooks';
 import { MessageType } from '@/constants/chat';
 import {
+  useFetchConversation,
   useFetchDialog,
   useGetChatSearchParams,
 } from '@/hooks/use-chat-request';
-import { useFetchUserInfo } from '@/hooks/use-user-setting-request';
-import { IClientConversation } from '@/interfaces/database/chat';
+import { useFetchUserInfo } from '@/hooks/user-setting-hooks';
 import { buildMessageUuidWithRole } from '@/utils/chat';
-import { useEffect } from 'react';
 import {
   useGetSendButtonDisabled,
   useSendButtonDisabled,
@@ -22,14 +21,9 @@ import { buildMessageItemReference } from '../../utils';
 interface IProps {
   controller: AbortController;
   stopOutputMessage(): void;
-  conversation: IClientConversation;
 }
 
-export function SingleChatBox({
-  controller,
-  stopOutputMessage,
-  conversation,
-}: IProps) {
+export function SingleChatBox({ controller, stopOutputMessage }: IProps) {
   const {
     value,
     scrollRef,
@@ -43,31 +37,17 @@ export function SingleChatBox({
     removeMessageById,
     handleUploadFile,
     removeFile,
-    setDerivedMessages,
   } = useSendMessage(controller);
   const { data: userInfo } = useFetchUserInfo();
   const { data: currentDialog } = useFetchDialog();
   const { createConversationBeforeUploadDocument } =
     useCreateConversationBeforeUploadDocument();
   const { conversationId } = useGetChatSearchParams();
+  const { data: conversation } = useFetchConversation();
   const disabled = useGetSendButtonDisabled();
   const sendDisabled = useSendButtonDisabled(value);
   const { visible, hideModal, documentId, selectedChunk, clickDocumentButton } =
     useClickDrawer();
-
-  useEffect(() => {
-    const messages = conversation?.message;
-    if (Array.isArray(messages)) {
-      setDerivedMessages(messages);
-    }
-  }, [conversation?.message, setDerivedMessages]);
-
-  useEffect(() => {
-    // Clear the message list after deleting the conversation.
-    if (conversationId === '') {
-      setDerivedMessages([]);
-    }
-  }, [conversationId, setDerivedMessages]);
 
   return (
     <section className="flex flex-col p-5 h-full">
@@ -121,12 +101,12 @@ export function SingleChatBox({
         removeFile={removeFile}
       />
       {visible && (
-        <PdfSheet
+        <PdfDrawer
           visible={visible}
           hideModal={hideModal}
           documentId={documentId}
           chunk={selectedChunk}
-        ></PdfSheet>
+        ></PdfDrawer>
       )}
     </section>
   );

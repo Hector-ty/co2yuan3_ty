@@ -1,0 +1,25 @@
+<view class="page">
+  <view class="card">
+    <view class="card-title">账号信息</view>
+    <view wx:if="{{!user}}">
+      <view class="empty-text">未登录或会话已过期，请返回登录。</view>
+      <button class="primary-btn" bindtap="goLogin">前往登录</button>
+    </view>
+    <view wx:else>
+      <view class="field-row">
+        <text class="field-label">邮箱：</text>
+        <text class="field-value">{{user.email}}</text>
+      </view>
+      <view class="field-row">
+        <text class="field-label">角色：</text>
+        <text class="field-value">{{user.role}}</text>
+      </view>
+      <view class="field-row">
+        <text class="field-label">单位名称：</text>
+        <text class="field-value">{{user.unitName || '—'}}</text>
+      </view>
+      <button class="primary-btn logout-btn" bindtap="onLogout">退出登录</button>
+    </view>
+  </view>
+</view>
+

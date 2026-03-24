@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { useFetchLangfuseConfig } from '@/hooks/use-user-setting-request';
+import { useFetchLangfuseConfig } from '@/hooks/user-setting-hooks';
 import { Eye, Settings2 } from 'lucide-react';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -45,7 +45,11 @@ export function LangfuseCard() {
                 <Eye /> {t('setting.view')}
               </Button>
             )}
-            <Button size={'sm'} onClick={showSaveLangfuseConfigurationModal}>
+            <Button
+              size={'sm'}
+              onClick={showSaveLangfuseConfigurationModal}
+              className="bg-blue-500 hover:bg-blue-400"
+            >
               <Settings2 />
               {t('setting.configuration')}
             </Button>

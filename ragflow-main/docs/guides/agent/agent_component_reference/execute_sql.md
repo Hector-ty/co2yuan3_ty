@@ -40,12 +40,12 @@ For dynamic SQL queries, you can include variables in your SQL queries, such as 
 
 ### Database type
 
-The supported database type. Currently, the following database types are available:
+The supported database type. Currently the following database types are available:
 
 - MySQL
-- PostgreSQL
+- PostreSQL
 - MariaDB
-- Microsoft SQL Server (Mssql)
+- Microsoft SQL Server (Myssql)
 
 ### Database
 

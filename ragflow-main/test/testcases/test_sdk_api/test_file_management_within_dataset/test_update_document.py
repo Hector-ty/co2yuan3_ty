@@ -17,7 +17,7 @@
 import pytest
 from configs import DOCUMENT_NAME_LIMIT
 from ragflow_sdk import DataSet
-from configs import DEFAULT_PARSER_CONFIG  
+
 
 class TestDocumentsUpdated:
     @pytest.mark.p1
@@ -39,9 +39,9 @@ class TestDocumentsUpdated:
         document = documents[0]
 
         if expected_message:
-            with pytest.raises(Exception) as exception_info:
+            with pytest.raises(Exception) as excinfo:
                 document.update({"name": name})
-            assert expected_message in str(exception_info.value), str(exception_info.value)
+            assert expected_message in str(excinfo.value), str(excinfo.value)
         else:
             document.update({"name": name})
             updated_doc = dataset.list_documents(id=document.id)[0]
@@ -60,9 +60,9 @@ class TestDocumentsUpdated:
         document = documents[0]
 
         if expected_message:
-            with pytest.raises(Exception) as exception_info:
+            with pytest.raises(Exception) as excinfo:
                 document.update({"meta_fields": meta_fields})
-            assert expected_message in str(exception_info.value), str(exception_info.value)
+            assert expected_message in str(excinfo.value), str(excinfo.value)
         else:
             document.update({"meta_fields": meta_fields})
 
@@ -92,9 +92,9 @@ class TestDocumentsUpdated:
         document = documents[0]
 
         if expected_message:
-            with pytest.raises(Exception) as exception_info:
+            with pytest.raises(Exception) as excinfo:
                 document.update({"chunk_method": chunk_method})
-            assert expected_message in str(exception_info.value), str(exception_info.value)
+            assert expected_message in str(excinfo.value), str(excinfo.value)
         else:
             document.update({"chunk_method": chunk_method})
             updated_doc = dataset.list_documents(id=document.id)[0]
@@ -193,9 +193,9 @@ class TestDocumentsUpdated:
         _, documents = add_documents
         document = documents[0]
 
-        with pytest.raises(Exception) as exception_info:
+        with pytest.raises(Exception) as excinfo:
             document.update(payload)
-        assert expected_message in str(exception_info.value), str(exception_info.value)
+        assert expected_message in str(excinfo.value), str(excinfo.value)
 
 
 class TestUpdateDocumentParserConfig:
@@ -206,7 +206,14 @@ class TestUpdateDocumentParserConfig:
             ("naive", {}, ""),
             (
                 "naive",
-                DEFAULT_PARSER_CONFIG,
+                {
+                    "chunk_token_num": 512,
+                    "layout_recognize": "DeepDOC",
+                    "html4excel": False,
+                    "delimiter": r"\n",
+                    "task_page_size": 12,
+                    "raptor": {"use_raptor": False},
+                },
                 "",
             ),
             pytest.param(
@@ -287,12 +294,7 @@ class TestUpdateDocumentParserConfig:
                 "",
                 marks=pytest.mark.skip(reason="issues/6098"),
             ),
-            ("naive", {"raptor": {"use_raptor": True,                 
-                                "prompt": "Please summarize the following paragraphs. Be careful with the numbers, do not make things up. Paragraphs as following:\n      {cluster_content}\nThe above is the content you need to summarize.",
-                                "max_token": 256,
-                                "threshold": 0.1,
-                                "max_cluster": 64,
-                                "random_seed": 0,}}, ""),
+            ("naive", {"raptor": {"use_raptor": True}}, ""),
             ("naive", {"raptor": {"use_raptor": False}}, ""),
             pytest.param(
                 "naive",
@@ -382,9 +384,9 @@ class TestUpdateDocumentParserConfig:
         update_data = {"chunk_method": chunk_method, "parser_config": parser_config}
 
         if expected_message:
-            with pytest.raises(Exception) as exception_info:
+            with pytest.raises(Exception) as excinfo:
                 document.update(update_data)
-            assert expected_message in str(exception_info.value), str(exception_info.value)
+            assert expected_message in str(excinfo.value), str(excinfo.value)
         else:
             document.update(update_data)
             updated_doc = dataset.list_documents(id=document.id)[0]
@@ -398,6 +400,13 @@ class TestUpdateDocumentParserConfig:
             else:
                 expected_config = DataSet.ParserConfig(
                     client,
-                    DEFAULT_PARSER_CONFIG,
+                    {
+                        "chunk_token_num": 512,
+                        "delimiter": r"\n",
+                        "html4excel": False,
+                        "layout_recognize": "DeepDOC",
+                        "raptor": {"use_raptor": False},
+                        "graphrag": {"use_graphrag": False},
+                    },
                 )
                 assert str(updated_doc.parser_config) == str(expected_config), str(updated_doc)

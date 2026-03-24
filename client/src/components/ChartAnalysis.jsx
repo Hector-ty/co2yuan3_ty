@@ -6,7 +6,6 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import EmissionPieChart from './charts/EmissionPieChart';
-import IntensityBarChart from './charts/IntensityBarChart';
 import YearlyEmissionBarChart from './charts/YearlyEmissionBarChart';
 import AnnualChangeLineChart from './charts/AnnualChangeLineChart';
 
@@ -46,12 +45,6 @@ const ChartAnalysis = ({ selectedRecord, allData }) => {
 
   // 安全地获取数据，防止 undefined 错误
   const breakdown = selectedRecord?.calculatedEmissions?.breakdown || {};
-  // 后端返回的是 emissionIntensityByArea 和 emissionIntensityByPerson，需要映射到 perArea 和 perCapita
-  const calculatedEmissions = selectedRecord?.calculatedEmissions || {};
-  const intensity = {
-    perArea: calculatedEmissions.emissionIntensityByArea,
-    perCapita: calculatedEmissions.emissionIntensityByPerson
-  };
   const regionName = selectedRecord?.regionName || selectedRecord?.regionCode || '未知区域';
   const year = selectedRecord?.year || '';
 
@@ -90,33 +83,14 @@ const ChartAnalysis = ({ selectedRecord, allData }) => {
                   aspectRatio: { xs: '1', sm: '1', md: '1' }, // 所有尺寸下保持正方形
                   minHeight: { xs: '380px', sm: '300px', md: '400px' }, // 移动端增大初始大小，网页端统一大小
                   height: { md: '400px' }, // 网页端固定高度，确保大小完全相同
-                  maxHeight: { md: '400px' } // 网页端最大高度，确保大小完全相同
+                  maxHeight: { md: '400px' }, // 网页端最大高度，确保大小完全相同
+                  backgroundColor: '#1e1e1e', // 深色背景，与数据大屏保持一致
+                  color: '#fff' // 白色文字
                 }}>
-                  <Typography variant="h6" align="center" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' }, flexShrink: 0 }}>排放构成</Typography>
+                  <Typography variant="h6" align="center" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' }, flexShrink: 0, color: '#fff' }}>排放构成</Typography>
                   <Box sx={{ flex: 1, width: '100%', minHeight: 0 }}>
                     <EmissionPieChart 
                       data={breakdown} 
-                      comparisonData={comparisonData}
-                      compareMode={compareMode}
-                    />
-                  </Box>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Paper sx={{ 
-                  p: { xs: 1.5, sm: 2, md: 2 }, // 移动端和网页端padding
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  width: '100%',
-                  aspectRatio: { xs: '1', sm: '1', md: '1' }, // 所有尺寸下保持正方形
-                  minHeight: { xs: '380px', sm: '300px', md: '400px' }, // 移动端增大初始大小，网页端统一大小
-                  height: { md: '400px' }, // 网页端固定高度，确保大小完全相同
-                  maxHeight: { md: '400px' } // 网页端最大高度，确保大小完全相同
-                }}>
-                  <Typography variant="h6" align="center" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' }, flexShrink: 0 }}>排放强度</Typography>
-                  <Box sx={{ flex: 1, width: '100%', minHeight: 0 }}>
-                    <IntensityBarChart
-                      recordData={{...intensity, regionName: regionName}}
                       comparisonData={comparisonData}
                       compareMode={compareMode}
                     />
@@ -133,9 +107,11 @@ const ChartAnalysis = ({ selectedRecord, allData }) => {
                   aspectRatio: { xs: '1', sm: '1', md: '1' }, // 所有尺寸下保持正方形
                   minHeight: { xs: '380px', sm: '300px', md: '400px' }, // 移动端增大初始大小，网页端统一大小
                   height: { md: '400px' }, // 网页端固定高度，确保大小完全相同
-                  maxHeight: { md: '400px' } // 网页端最大高度，确保大小完全相同
+                  maxHeight: { md: '400px' }, // 网页端最大高度，确保大小完全相同
+                  backgroundColor: '#1e1e1e', // 深色背景，与数据大屏保持一致
+                  color: '#fff' // 白色文字
                 }}>
-                  <Typography variant="h6" align="center" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' }, flexShrink: 0 }}>年度排放量</Typography>
+                  <Typography variant="h6" align="center" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' }, flexShrink: 0, color: '#fff' }}>年度排放量</Typography>
                   <Box sx={{ flex: 1, width: '100%', minHeight: 0 }}>
                     <YearlyEmissionBarChart
                       yearlyData={yearlyDataForSelectedRegion}
@@ -155,9 +131,11 @@ const ChartAnalysis = ({ selectedRecord, allData }) => {
                   aspectRatio: { xs: '1', sm: '1', md: '1' }, // 所有尺寸下保持正方形
                   minHeight: { xs: '380px', sm: '300px', md: '400px' }, // 移动端增大初始大小，网页端统一大小
                   height: { md: '400px' }, // 网页端固定高度，确保大小完全相同
-                  maxHeight: { md: '400px' } // 网页端最大高度，确保大小完全相同
+                  maxHeight: { md: '400px' }, // 网页端最大高度，确保大小完全相同
+                  backgroundColor: '#1e1e1e', // 深色背景，与数据大屏保持一致
+                  color: '#fff' // 白色文字
                 }}>
-                  <Typography variant="h6" align="center" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' }, flexShrink: 0 }}>年均变化率</Typography>
+                  <Typography variant="h6" align="center" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' }, flexShrink: 0, color: '#fff' }}>年均变化率</Typography>
                   <Box sx={{ flex: 1, width: '100%', minHeight: 0 }}>
                     <AnnualChangeLineChart 
                       yearlyData={yearlyDataForSelectedRegion} 

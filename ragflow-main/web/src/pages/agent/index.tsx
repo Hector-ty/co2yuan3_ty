@@ -28,25 +28,22 @@ import {
   History,
   LaptopMinimalCheck,
   Logs,
-  MessageSquareCode,
   ScreenShare,
   Settings,
   Upload,
 } from 'lucide-react';
 import { ComponentPropsWithoutRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router';
+import { useParams } from 'umi';
 import AgentCanvas from './canvas';
 import { DropdownProvider } from './canvas/context';
 import { Operator } from './constant';
-import { GlobalParamSheet } from './gobal-variable-sheet';
 import { useCancelCurrentDataflow } from './hooks/use-cancel-dataflow';
 import { useHandleExportJsonFile } from './hooks/use-export-json';
 import { useFetchDataOnMount } from './hooks/use-fetch-data';
 import { useFetchPipelineLog } from './hooks/use-fetch-pipeline-log';
 import { useGetBeginNodeDataInputs } from './hooks/use-get-begin-query';
 import { useIsPipeline } from './hooks/use-is-pipeline';
-import { useIsWebhookMode } from './hooks/use-is-webhook';
 import { useRunDataflow } from './hooks/use-run-dataflow';
 import {
   useSaveGraph,
@@ -59,7 +56,6 @@ import { SettingDialog } from './setting-dialog';
 import useGraphStore from './store';
 import { useAgentHistoryManager } from './use-agent-history-manager';
 import { VersionDialog } from './version-dialog';
-import WebhookSheet from './webhook-sheet';
 
 function AgentDropdownMenuItem({
   children,
@@ -112,7 +108,6 @@ export default function Agent() {
     useShowEmbedModal();
   const { navigateToAgentLogs } = useNavigatePage();
   const time = useWatchAgentChange(chatDrawerVisible);
-  const isWebhookMode = useIsWebhookMode();
 
   // pipeline
 
@@ -123,21 +118,9 @@ export default function Agent() {
   } = useSetModalState();
 
   const {
-    visible: webhookTestSheetVisible,
-    hideModal: hideWebhookTestSheet,
-    showModal: showWebhookTestSheet,
-  } = useSetModalState();
-
-  const {
     visible: pipelineLogSheetVisible,
     showModal: showPipelineLogSheet,
     hideModal: hidePipelineLogSheet,
-  } = useSetModalState();
-
-  const {
-    visible: globalParamSheetVisible,
-    showModal: showGlobalParamSheet,
-    hideModal: hideGlobalParamSheet,
   } = useSetModalState();
 
   const {
@@ -181,22 +164,12 @@ export default function Agent() {
   });
 
   const handleButtonRunClick = useCallback(() => {
-    if (isWebhookMode) {
-      saveGraph();
-      showWebhookTestSheet();
-    } else if (isPipeline) {
+    if (isPipeline) {
       handleRunPipeline();
     } else {
       handleRunAgent();
     }
-  }, [
-    handleRunAgent,
-    handleRunPipeline,
-    isPipeline,
-    isWebhookMode,
-    saveGraph,
-    showWebhookTestSheet,
-  ]);
+  }, [handleRunAgent, handleRunPipeline, isPipeline]);
 
   const {
     run: runPipeline,
@@ -233,20 +206,13 @@ export default function Agent() {
           >
             <LaptopMinimalCheck /> {t('flow.save')}
           </ButtonLoading>
-          <ButtonLoading
-            variant={'secondary'}
-            onClick={() => showGlobalParamSheet()}
-            loading={loading}
-          >
-            <MessageSquareCode /> {t('flow.conversationVariable')}
-          </ButtonLoading>
           <Button variant={'secondary'} onClick={handleButtonRunClick}>
             <CirclePlay />
             {t('flow.run')}
           </Button>
           <Button variant={'secondary'} onClick={showVersionDialog}>
             <History />
-            {t('flow.historyVersion')}
+            {t('flow.historyversion')}
           </Button>
           {isPipeline || (
             <Button
@@ -332,15 +298,6 @@ export default function Agent() {
           run={runPipeline}
           loading={pipelineRunning}
         ></PipelineRunSheet>
-      )}
-      {globalParamSheetVisible && (
-        <GlobalParamSheet
-          data={{}}
-          hideModal={hideGlobalParamSheet}
-        ></GlobalParamSheet>
-      )}
-      {webhookTestSheetVisible && (
-        <WebhookSheet hideModal={hideWebhookTestSheet}></WebhookSheet>
       )}
     </section>
   );

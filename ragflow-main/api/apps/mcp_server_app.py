@@ -13,25 +13,25 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-import asyncio
+from flask import Response, request
+from flask_login import current_user, login_required
 
-from quart import Response, request
-from api.apps import current_user, login_required
-
+from api.db import VALID_MCP_SERVER_TYPES
 from api.db.db_models import MCPServer
 from api.db.services.mcp_server_service import MCPServerService
 from api.db.services.user_service import TenantService
-from common.constants import RetCode, VALID_MCP_SERVER_TYPES
+from api.settings import RetCode
 
-from common.misc_utils import get_uuid
-from api.utils.api_utils import get_data_error_result, get_json_result, get_mcp_tools, get_request_json, server_error_response, validate_request
+from api.utils import get_uuid
+from api.utils.api_utils import get_data_error_result, get_json_result, server_error_response, validate_request, \
+    get_mcp_tools
 from api.utils.web_utils import get_float, safe_json_parse
-from common.mcp_tool_call_conn import MCPToolCallSession, close_multiple_mcp_toolcall_sessions
+from rag.utils.mcp_tool_call_conn import MCPToolCallSession, close_multiple_mcp_toolcall_sessions
 
 
 @manager.route("/list", methods=["POST"])  # noqa: F821
 @login_required
-async def list_mcp() -> Response:
+def list_mcp() -> Response:
     keywords = request.args.get("keywords", "")
     page_number = int(request.args.get("page", 0))
     items_per_page = int(request.args.get("page_size", 0))
@@ -41,7 +41,7 @@ async def list_mcp() -> Response:
     else:
         desc = True
 
-    req = await get_request_json()
+    req = request.get_json()
     mcp_ids = req.get("mcp_ids", [])
     try:
         servers = MCPServerService.get_servers(current_user.id, mcp_ids, 0, 0, orderby, desc, keywords) or []
@@ -73,8 +73,8 @@ def detail() -> Response:
 @manager.route("/create", methods=["POST"])  # noqa: F821
 @login_required
 @validate_request("name", "url", "server_type")
-async def create() -> Response:
-    req = await get_request_json()
+def create() -> Response:
+    req = request.get_json()
 
     server_type = req.get("server_type", "")
     if server_type not in VALID_MCP_SERVER_TYPES:
@@ -108,7 +108,7 @@ async def create() -> Response:
             return get_data_error_result(message="Tenant not found.")
 
         mcp_server = MCPServer(id=server_name, name=server_name, url=url, server_type=server_type, variables=variables, headers=headers)
-        server_tools, err_message = await asyncio.to_thread(get_mcp_tools, [mcp_server], timeout)
+        server_tools, err_message = get_mcp_tools([mcp_server], timeout)
         if err_message:
             return get_data_error_result(err_message)
 
@@ -128,8 +128,8 @@ async def create() -> Response:
 @manager.route("/update", methods=["POST"])  # noqa: F821
 @login_required
 @validate_request("mcp_id")
-async def update() -> Response:
-    req = await get_request_json()
+def update() -> Response:
+    req = request.get_json()
 
     mcp_id = req.get("mcp_id", "")
     e, mcp_server = MCPServerService.get_by_id(mcp_id)
@@ -160,7 +160,7 @@ async def update() -> Response:
         req["id"] = mcp_id
 
         mcp_server = MCPServer(id=server_name, name=server_name, url=url, server_type=server_type, variables=variables, headers=headers)
-        server_tools, err_message = await asyncio.to_thread(get_mcp_tools, [mcp_server], timeout)
+        server_tools, err_message = get_mcp_tools([mcp_server], timeout)
         if err_message:
             return get_data_error_result(err_message)
 
@@ -184,8 +184,8 @@ async def update() -> Response:
 @manager.route("/rm", methods=["POST"])  # noqa: F821
 @login_required
 @validate_request("mcp_ids")
-async def rm() -> Response:
-    req = await get_request_json()
+def rm() -> Response:
+    req = request.get_json()
     mcp_ids = req.get("mcp_ids", [])
 
     try:
@@ -202,8 +202,8 @@ async def rm() -> Response:
 @manager.route("/import", methods=["POST"])  # noqa: F821
 @login_required
 @validate_request("mcpServers")
-async def import_multiple() -> Response:
-    req = await get_request_json()
+def import_multiple() -> Response:
+    req = request.get_json()
     servers = req.get("mcpServers", {})
     if not servers:
         return get_data_error_result(message="No MCP servers provided.")
@@ -244,7 +244,7 @@ async def import_multiple() -> Response:
             headers = {"authorization_token": config["authorization_token"]} if "authorization_token" in config else {}
             variables = {k: v for k, v in config.items() if k not in {"type", "url", "headers"}}
             mcp_server = MCPServer(id=new_name, name=new_name, url=config["url"], server_type=config["type"], variables=variables, headers=headers)
-            server_tools, err_message = await asyncio.to_thread(get_mcp_tools, [mcp_server], timeout)
+            server_tools, err_message = get_mcp_tools([mcp_server], timeout)
             if err_message:
                 results.append({"server": base_name, "success": False, "message": err_message})
                 continue
@@ -269,8 +269,8 @@ async def import_multiple() -> Response:
 @manager.route("/export", methods=["POST"])  # noqa: F821
 @login_required
 @validate_request("mcp_ids")
-async def export_multiple() -> Response:
-    req = await get_request_json()
+def export_multiple() -> Response:
+    req = request.get_json()
     mcp_ids = req.get("mcp_ids", [])
 
     if not mcp_ids:
@@ -301,8 +301,8 @@ async def export_multiple() -> Response:
 @manager.route("/list_tools", methods=["POST"])  # noqa: F821
 @login_required
 @validate_request("mcp_ids")
-async def list_tools() -> Response:
-    req = await get_request_json()
+def list_tools() -> Response:
+    req = request.get_json()
     mcp_ids = req.get("mcp_ids", [])
     if not mcp_ids:
         return get_data_error_result(message="No MCP server IDs provided.")
@@ -324,8 +324,9 @@ async def list_tools() -> Response:
                 tool_call_sessions.append(tool_call_session)
 
                 try:
-                    tools = await asyncio.to_thread(tool_call_session.get_tools, timeout)
+                    tools = tool_call_session.get_tools(timeout)
                 except Exception as e:
+                    tools = []
                     return get_data_error_result(message=f"MCP list tools error: {e}")
 
                 results[server_key] = []
@@ -341,14 +342,14 @@ async def list_tools() -> Response:
         return server_error_response(e)
     finally:
         # PERF: blocking call to close sessions — consider moving to background thread or task queue
-        await asyncio.to_thread(close_multiple_mcp_toolcall_sessions, tool_call_sessions)
+        close_multiple_mcp_toolcall_sessions(tool_call_sessions)
 
 
 @manager.route("/test_tool", methods=["POST"])  # noqa: F821
 @login_required
 @validate_request("mcp_id", "tool_name", "arguments")
-async def test_tool() -> Response:
-    req = await get_request_json()
+def test_tool() -> Response:
+    req = request.get_json()
     mcp_id = req.get("mcp_id", "")
     if not mcp_id:
         return get_data_error_result(message="No MCP server ID provided.")
@@ -368,10 +369,10 @@ async def test_tool() -> Response:
 
         tool_call_session = MCPToolCallSession(mcp_server, mcp_server.variables)
         tool_call_sessions.append(tool_call_session)
-        result = await asyncio.to_thread(tool_call_session.tool_call, tool_name, arguments, timeout)
+        result = tool_call_session.tool_call(tool_name, arguments, timeout)
 
         # PERF: blocking call to close sessions — consider moving to background thread or task queue
-        await asyncio.to_thread(close_multiple_mcp_toolcall_sessions, tool_call_sessions)
+        close_multiple_mcp_toolcall_sessions(tool_call_sessions)
         return get_json_result(data=result)
     except Exception as e:
         return server_error_response(e)
@@ -380,8 +381,8 @@ async def test_tool() -> Response:
 @manager.route("/cache_tools", methods=["POST"])  # noqa: F821
 @login_required
 @validate_request("mcp_id", "tools")
-async def cache_tool() -> Response:
-    req = await get_request_json()
+def cache_tool() -> Response:
+    req = request.get_json()
     mcp_id = req.get("mcp_id", "")
     if not mcp_id:
         return get_data_error_result(message="No MCP server ID provided.")
@@ -403,8 +404,8 @@ async def cache_tool() -> Response:
 
 @manager.route("/test_mcp", methods=["POST"])  # noqa: F821
 @validate_request("url", "server_type")
-async def test_mcp() -> Response:
-    req = await get_request_json()
+def test_mcp() -> Response:
+    req = request.get_json()
 
     url = req.get("url", "")
     if not url:
@@ -425,12 +426,13 @@ async def test_mcp() -> Response:
         tool_call_session = MCPToolCallSession(mcp_server, mcp_server.variables)
 
         try:
-            tools = await asyncio.to_thread(tool_call_session.get_tools, timeout)
+            tools = tool_call_session.get_tools(timeout)
         except Exception as e:
+            tools = []
             return get_data_error_result(message=f"Test MCP error: {e}")
         finally:
             # PERF: blocking call to close sessions — consider moving to background thread or task queue
-            await asyncio.to_thread(close_multiple_mcp_toolcall_sessions, [tool_call_session])
+            close_multiple_mcp_toolcall_sessions([tool_call_session])
 
         for tool in tools:
             tool_dict = tool.model_dump()

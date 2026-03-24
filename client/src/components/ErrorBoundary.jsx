@@ -17,12 +17,28 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div>
-          <h2>图表加载失败。</h2>
-          <p>很抱歉，加载此图表时出现问题。请稍后重试或联系技术支持。</p>
-          <details style={{ whiteSpace: 'pre-wrap' }}>
-            {this.state.error && this.state.error.toString()}
-          </details>
+        <div style={{ padding: '20px', color: '#d32f2f' }}>
+          <h2 style={{ color: '#d32f2f', marginBottom: '10px' }}>
+            {this.props.title || '组件加载失败'}
+          </h2>
+          <p style={{ marginBottom: '10px' }}>
+            {this.props.message || '很抱歉，加载此组件时出现问题。请稍后重试或联系技术支持。'}
+          </p>
+          {process.env.NODE_ENV === 'development' && this.state.error && (
+            <details style={{ whiteSpace: 'pre-wrap', marginTop: '10px' }}>
+              <summary style={{ cursor: 'pointer', marginBottom: '5px' }}>错误详情</summary>
+              <pre style={{ 
+                background: '#f5f5f5', 
+                padding: '10px', 
+                borderRadius: '4px',
+                overflow: 'auto',
+                maxHeight: '200px'
+              }}>
+                {this.state.error.toString()}
+                {this.state.error.stack && `\n${this.state.error.stack}`}
+              </pre>
+            </details>
+          )}
         </div>
       );
     }

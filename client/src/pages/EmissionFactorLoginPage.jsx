@@ -124,10 +124,10 @@ const EmissionFactorLoginPage = ({ onLoginSuccess }) => {
       const response = await axios.post('/api/auth/login', { email, password });
       
       if (response.data.success) {
-        // 检查用户是否为管理员
+        // 仅允许超级管理员登录排放因子管理系统
         const user = response.data.user;
-        if (user.role !== 'admin') {
-          setError('此页面仅限管理员访问');
+        if (user.role !== 'superadmin') {
+          setError('此页面仅限超级管理员访问');
           setLoading(false);
           return;
         }
@@ -137,8 +137,13 @@ const EmissionFactorLoginPage = ({ onLoginSuccess }) => {
           onLoginSuccess(response.data.token, user);
         } else {
           // 否则使用默认行为：保存登录信息并跳转
+          // 为了与排放因子管理路由的独立认证保持一致，同时写入专用和主系统的存储键
+          localStorage.setItem('emissionFactorToken', response.data.token);
+          localStorage.setItem('emissionFactorUser', JSON.stringify(user));
           localStorage.setItem('token', response.data.token);
           localStorage.setItem('user', JSON.stringify(user));
+          // 触发自定义事件，通知路由组件重新检查认证状态
+          window.dispatchEvent(new Event('emissionFactorAuthChange'));
           navigate('/EmissionFactorManagement', { replace: true });
         }
       }
@@ -1318,7 +1323,7 @@ const EmissionFactorLoginPage = ({ onLoginSuccess }) => {
                 }}
               >
                 <AdminIcon sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.5)' }} />
-                仅限管理员账号登录
+                仅限超级管理员账号登录
               </Typography>
             </Box>
           </Box>

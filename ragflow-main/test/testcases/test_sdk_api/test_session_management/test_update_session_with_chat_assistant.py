@@ -42,9 +42,9 @@ class TestSessionWithChatAssistantUpdate:
             session.update({"name": payload["name"].upper()})
 
         if expected_message:
-            with pytest.raises(Exception) as exception_info:
+            with pytest.raises(Exception) as excinfo:
                 session.update(payload)
-            assert expected_message in str(exception_info.value)
+            assert expected_message in str(excinfo.value)
         else:
             session.update(payload)
             updated_session = chat_assistant.list_sessions(id=session.id)[0]
@@ -72,9 +72,9 @@ class TestSessionWithChatAssistantUpdate:
         session = sessions[0]
 
         if expected_message:
-            with pytest.raises(Exception) as exception_info:
+            with pytest.raises(Exception) as excinfo:
                 session.update(payload)
-            assert expected_message in str(exception_info.value)
+            assert expected_message in str(excinfo.value)
         else:
             session.update(payload)
 
@@ -93,6 +93,6 @@ class TestSessionWithChatAssistantUpdate:
         chat_assistant, sessions = add_sessions_with_chat_assistant_func
         client.delete_chats(ids=[chat_assistant.id])
 
-        with pytest.raises(Exception) as exception_info:
+        with pytest.raises(Exception) as excinfo:
             sessions[0].update({"name": "valid_name"})
-        assert "You do not own the session" in str(exception_info.value)
+        assert "You do not own the session" in str(excinfo.value)

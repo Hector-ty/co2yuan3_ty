@@ -26,14 +26,42 @@ const AccountSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please provide a unit name']
   },
+  unitType: {
+    type: String,
+    default: '默认单位类型'
+  },
+  creditCode: {
+    type: String,
+    required: [true, 'Please provide a credit code']
+  },
   region: {
     type: String,
     required: [true, 'Please provide a region']
   },
+  address: {
+    type: String,
+    required: [true, 'Please provide an address']
+  },
+  buildingArea: {
+    type: Number,
+    required: [true, 'Please provide building area']
+  },
+  personnelCount: {
+    type: Number,
+    required: [true, 'Please provide personnel count']
+  },
+  contactPerson: {
+    type: String,
+    required: [true, 'Please provide contact person']
+  },
+  contactPhone: {
+    type: String,
+    required: [true, 'Please provide contact phone']
+  },
   role: {
     type: String,
-    enum: ['admin', 'editor', 'viewer'],
-    default: 'viewer'
+    enum: ['superadmin', 'province_admin', 'city_admin', 'district_admin', 'organization_user'],
+    default: 'organization_user' // 新注册用户默认为机构用户，拥有填报数据和查看数据大屏的权限
   }
 });
 

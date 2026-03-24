@@ -2,14 +2,9 @@
 
 import { AvatarUpload } from '@/components/avatar-upload';
 import {
-  LlmSettingFieldItems,
-  LlmSettingSchema,
-} from '@/components/llm-setting-items/next';
-import {
   MetadataFilter,
   MetadataFilterSchema,
 } from '@/components/metadata-filter';
-import { SimilaritySliderFormField } from '@/components/similarity-slider';
 import { Button } from '@/components/ui/button';
 import { SingleFormSlider } from '@/components/ui/dual-range-slider';
 import {
@@ -29,12 +24,12 @@ import { RAGFlowSelect } from '@/components/ui/select';
 import { Spin } from '@/components/ui/spin';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { useFetchKnowledgeList } from '@/hooks/use-knowledge-request';
+import { useFetchKnowledgeList } from '@/hooks/knowledge-hooks';
 import {
   useComposeLlmOptionsByModelTypes,
   useSelectLlmOptionsByModelType,
-} from '@/hooks/use-llm-request';
-import { useFetchTenantInfo } from '@/hooks/use-user-setting-request';
+} from '@/hooks/llm-hooks';
+import { useFetchTenantInfo } from '@/hooks/user-setting-hooks';
 import { IKnowledge } from '@/interfaces/database/knowledge';
 import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -50,10 +45,10 @@ import {
   IllmSettingProps,
   useUpdateSearch,
 } from '../next-searches/hooks';
-// import {
-//   LlmSettingFieldItems,
-//   LlmSettingSchema,
-// } from './search-setting-aisummery-config';
+import {
+  LlmSettingFieldItems,
+  LlmSettingSchema,
+} from './search-setting-aisummery-config';
 
 interface SearchSettingProps {
   open: boolean;
@@ -397,12 +392,86 @@ const SearchSetting: React.FC<SearchSettingProps> = ({
               )}
             />
             <MetadataFilter prefix="search_config."></MetadataFilter>
-            <SimilaritySliderFormField
-              isTooltipShown
-              similarityName="search_config.similarity_threshold"
-              vectorSimilarityWeightName="search_config.vector_similarity_weight"
-              numberInputClassName="rounded-sm"
-            ></SimilaritySliderFormField>
+            <FormField
+              control={formMethods.control}
+              name="search_config.similarity_threshold"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel
+                    tooltip={t('knowledgeDetails.similarityThresholdTip')}
+                  >
+                    {t('knowledgeDetails.similarityThreshold')}
+                  </FormLabel>
+                  <div
+                    className={cn(
+                      'flex items-center gap-4 justify-between',
+                      className,
+                    )}
+                  >
+                    <FormControl>
+                      <SingleFormSlider
+                        {...field}
+                        max={1}
+                        min={0}
+                        step={0.01}
+                      ></SingleFormSlider>
+                    </FormControl>
+                    <FormControl>
+                      <Input
+                        type={'number'}
+                        className="h-7 w-20 bg-bg-card"
+                        max={1}
+                        min={0}
+                        step={0.01}
+                        {...field}
+                      ></Input>
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* Keyword Similarity Weight */}
+            <FormField
+              control={formMethods.control}
+              name="search_config.vector_similarity_weight"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel
+                    tooltip={t('knowledgeDetails.vectorSimilarityWeightTip')}
+                  >
+                    <span className="text-destructive mr-1"> *</span>
+                    {t('knowledgeDetails.vectorSimilarityWeight')}
+                  </FormLabel>
+                  <div
+                    className={cn(
+                      'flex items-center gap-4 justify-between',
+                      className,
+                    )}
+                  >
+                    <FormControl>
+                      <SingleFormSlider
+                        {...field}
+                        max={1}
+                        min={0}
+                        step={0.01}
+                      ></SingleFormSlider>
+                    </FormControl>
+                    <FormControl>
+                      <Input
+                        type={'number'}
+                        className="h-7 w-20 bg-bg-card"
+                        max={1}
+                        min={0}
+                        step={0.01}
+                        {...field}
+                      ></Input>
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             {/* Rerank Model */}
             <FormField
               control={formMethods.control}
@@ -467,7 +536,7 @@ const SearchSetting: React.FC<SearchSettingProps> = ({
                         <FormControl>
                           <Input
                             type={'number'}
-                            className="h-7 w-20 bg-bg-card border border-border-button rounded-sm"
+                            className="h-7 w-20 bg-bg-card"
                             max={2048}
                             min={0}
                             step={1}
@@ -498,19 +567,9 @@ const SearchSetting: React.FC<SearchSettingProps> = ({
               )}
             />
             {aiSummaryDisabled && (
-              // <LlmSettingFieldItems
-              //   prefix="search_config.llm_setting"
-              //   options={aiSummeryModelOptions}
-              // ></LlmSettingFieldItems>
               <LlmSettingFieldItems
                 prefix="search_config.llm_setting"
                 options={aiSummeryModelOptions}
-                showFields={[
-                  'temperature',
-                  'top_p',
-                  'presence_penalty',
-                  'frequency_penalty',
-                ]}
               ></LlmSettingFieldItems>
             )}
             {/* Feature Controls */}

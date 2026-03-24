@@ -1,11 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
+import { formatNumber } from '../../utils/formatNumber';
 
 const StackedAreaChart = ({ data }) => {
   const chartRef = useRef(null);
 
   useEffect(() => {
+    if (!chartRef.current) return;
+    
     const chart = echarts.init(chartRef.current);
+    const safeData = data || { years: [], fossilFuels: [], fugitiveEmissions: [], electricity: [], heat: [] };
     const option = {
       tooltip: {
         trigger: 'axis',
@@ -14,10 +18,17 @@ const StackedAreaChart = ({ data }) => {
           label: {
             backgroundColor: '#6a7985'
           }
+        },
+        formatter: (params) => {
+          if (!params || !params.length) return '';
+          const y = params[0].axisValue || '';
+          let s = y + '年<br/>';
+          params.forEach(p => { s += (p.marker || '') + (p.seriesName || '') + ': ' + formatNumber(p.value) + ' tCO₂<br/>'; });
+          return s;
         }
       },
       legend: {
-        data: ['化石燃料', '移动源', '外购电力', '外购热力'],
+        data: ['化石燃料', '逸散排放', '外购电力', '外购热力'],
         textStyle: {
           color: '#fff'
         }
@@ -32,7 +43,7 @@ const StackedAreaChart = ({ data }) => {
         {
           type: 'category',
           boundaryGap: false,
-          data: data.years,
+          data: safeData.years,
           axisLabel: { // 确保X轴标签文字颜色为白色
             color: '#fff'
           }
@@ -55,17 +66,17 @@ const StackedAreaChart = ({ data }) => {
           emphasis: {
             focus: 'series'
           },
-          data: data.fossilFuels
+          data: safeData.fossilFuels
         },
         {
-          name: '移动源',
+          name: '逸散排放',
           type: 'line',
           stack: '总量',
           areaStyle: {},
           emphasis: {
             focus: 'series'
           },
-          data: data.mobileSources
+          data: safeData.fugitiveEmissions
         },
         {
           name: '外购电力',
@@ -75,7 +86,7 @@ const StackedAreaChart = ({ data }) => {
           emphasis: {
             focus: 'series'
           },
-          data: data.electricity
+          data: safeData.electricity
         },
         {
           name: '外购热力',
@@ -85,7 +96,7 @@ const StackedAreaChart = ({ data }) => {
           emphasis: {
             focus: 'series'
           },
-          data: data.heat
+          data: safeData.heat
         }
       ]
     };

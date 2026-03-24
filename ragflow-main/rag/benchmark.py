@@ -20,11 +20,11 @@ import time
 import argparse
 from collections import defaultdict
 
-from common import settings
-from common.constants import LLMType
+from api.db import LLMType
 from api.db.services.llm_service import LLMBundle
 from api.db.services.knowledgebase_service import KnowledgebaseService
-from common.misc_utils import get_uuid
+from api import settings
+from api.utils import get_uuid
 from rag.nlp import tokenize, search
 from ranx import evaluate
 from ranx import Qrels, Run
@@ -77,9 +77,9 @@ class Benchmark:
     def init_index(self, vector_size: int):
         if self.initialized_index:
             return
-        if settings.docStoreConn.index_exist(self.index_name, self.kb_id):
-            settings.docStoreConn.delete_idx(self.index_name, self.kb_id)
-        settings.docStoreConn.create_idx(self.index_name, self.kb_id, vector_size)
+        if settings.docStoreConn.indexExist(self.index_name, self.kb_id):
+            settings.docStoreConn.deleteIdx(self.index_name, self.kb_id)
+        settings.docStoreConn.createIdx(self.index_name, self.kb_id, vector_size)
         self.initialized_index = True
 
     def ms_marco_index(self, file_path, index_name):
@@ -283,7 +283,7 @@ if __name__ == '__main__':
     print('*****************RAGFlow Benchmark*****************')
     parser = argparse.ArgumentParser(usage="benchmark.py <max_docs> <kb_id> <dataset> <dataset_path> [<miracl_corpus_path>])", description='RAGFlow Benchmark')
     parser.add_argument('max_docs', metavar='max_docs', type=int, help='max docs to evaluate')
-    parser.add_argument('kb_id', metavar='kb_id', help='dataset id')
+    parser.add_argument('kb_id', metavar='kb_id', help='knowledgebase id')
     parser.add_argument('dataset', metavar='dataset', help='dataset name, shall be one of ms_marco_v1.1(https://huggingface.co/datasets/microsoft/ms_marco), trivia_qa(https://huggingface.co/datasets/mandarjoshi/trivia_qa>), miracl(https://huggingface.co/datasets/miracl/miracl')
     parser.add_argument('dataset_path', metavar='dataset_path', help='dataset path')
     parser.add_argument('miracl_corpus_path', metavar='miracl_corpus_path', nargs='?', default="", help='miracl corpus path. Only needed when dataset is miracl')

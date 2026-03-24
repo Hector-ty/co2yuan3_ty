@@ -1,13 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
-
-/* 碳排放数据监测系统 - styles.css */
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
-}
+/* 移除 Google Fonts 导入 - 使用系统字体以避免网络延迟
+ * Material-UI 会自动回退到系统字体：-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif
+ * 如果需要 Roboto 字体，可以在 index.html 中使用 <link> 标签异步加载
+ */
 
 /* 碳排放数据监测系统 - styles.css */
 
@@ -20,9 +14,6 @@
 
 /* 移除与MUI深色主题冲突的全局样式 */
 /* body, .container, header, .card, .card-title, label, input, select, button, .btn-group, .btn-submit, .btn-reset, .visualization, .chart-title, .chart-container, .bar, .bar-label, .bar-value, .data-card, .data-value, .data-label, .trend, .carbon-intensity, .intensity-value, .compliance, footer, @media 响应式设计等相关样式都应由MUI主题或组件自身管理 */
-
-/* 仅保留必要的全局导入和重置 */
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
 
 /* 响应式设计 */
 @media (max-width: 900px) {
@@ -115,4 +106,12 @@
     * {
         -webkit-tap-highlight-color: transparent; /* 移除移动端点击高亮 */
     }
+}
+
+/* AI 助手页（/ai-assistant）仿 RAGFlow 风格 */
+html[data-route="ai-assistant"],
+body.route-ai-assistant {
+    --ai-bg: #0d0d0d;
+    --ai-text: #e5e5e5;
+    --ai-sidebar-bg: rgba(0, 0, 0, 0.2);
 }

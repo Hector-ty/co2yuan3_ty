@@ -38,9 +38,9 @@ class TestChunksRetrieval:
             payload["document_ids"] = [document.id]
 
         if expected_message:
-            with pytest.raises(Exception) as exception_info:
+            with pytest.raises(Exception) as excinfo:
                 client.retrieve(**payload)
-            assert expected_message in str(exception_info.value), str(exception_info.value)
+            assert expected_message in str(excinfo.value), str(excinfo.value)
         else:
             chunks = client.retrieve(**payload)
             assert len(chunks) == expected_page_size, str(chunks)
@@ -61,7 +61,7 @@ class TestChunksRetrieval:
                 "ValueError('Search does not support negative slicing.')",
                 marks=pytest.mark.skip,
             ),
-            ({"page": 2, "page_size": 2}, 2, ""),
+            pytest.param({"page": 2, "page_size": 2}, 2, "", marks=pytest.mark.skip(reason="issues/6646")),
             ({"page": 3, "page_size": 2}, 0, ""),
             ({"page": "3", "page_size": 2}, 0, ""),
             pytest.param(
@@ -83,9 +83,9 @@ class TestChunksRetrieval:
         payload.update({"question": "chunk", "dataset_ids": [dataset.id]})
 
         if expected_message:
-            with pytest.raises(Exception) as exception_info:
+            with pytest.raises(Exception) as excinfo:
                 client.retrieve(**payload)
-            assert expected_message in str(exception_info.value), str(exception_info.value)
+            assert expected_message in str(excinfo.value), str(excinfo.value)
         else:
             chunks = client.retrieve(**payload)
             assert len(chunks) == expected_page_size, str(chunks)
@@ -100,9 +100,9 @@ class TestChunksRetrieval:
                 """TypeError("int() argument must be a string, a bytes-like object or a real number, not \'NoneType\'")""",
                 marks=pytest.mark.skip,
             ),
-            pytest.param({"page_size": 1}, 1, "", marks=pytest.mark.skip(reason="issues/10692")),
+            ({"page_size": 1}, 1, ""),
             ({"page_size": 5}, 4, ""),
-            pytest.param({"page_size": "1"}, 1, "", marks=pytest.mark.skip(reason="issues/10692")),
+            ({"page_size": "1"}, 1, ""),
             pytest.param(
                 {"page_size": "a"},
                 0,
@@ -116,9 +116,9 @@ class TestChunksRetrieval:
         payload.update({"question": "chunk", "dataset_ids": [dataset.id]})
 
         if expected_message:
-            with pytest.raises(Exception) as exception_info:
+            with pytest.raises(Exception) as excinfo:
                 client.retrieve(**payload)
-            assert expected_message in str(exception_info.value), str(exception_info.value)
+            assert expected_message in str(excinfo.value), str(excinfo.value)
         else:
             chunks = client.retrieve(**payload)
             assert len(chunks) == expected_page_size, str(chunks)
@@ -143,9 +143,9 @@ class TestChunksRetrieval:
         payload.update({"question": "chunk", "dataset_ids": [dataset.id]})
 
         if expected_message:
-            with pytest.raises(Exception) as exception_info:
+            with pytest.raises(Exception) as excinfo:
                 client.retrieve(**payload)
-            assert expected_message in str(exception_info.value), str(exception_info.value)
+            assert expected_message in str(excinfo.value), str(excinfo.value)
         else:
             chunks = client.retrieve(**payload)
             assert len(chunks) == expected_page_size, str(chunks)
@@ -192,9 +192,9 @@ class TestChunksRetrieval:
         payload.update({"question": "chunk", "dataset_ids": [dataset.id]})
 
         if expected_message:
-            with pytest.raises(Exception) as exception_info:
+            with pytest.raises(Exception) as excinfo:
                 client.retrieve(**payload)
-            assert expected_message in str(exception_info.value), str(exception_info.value)
+            assert expected_message in str(excinfo.value), str(excinfo.value)
         else:
             chunks = client.retrieve(**payload)
             assert len(chunks) == expected_page_size, str(chunks)
@@ -212,9 +212,9 @@ class TestChunksRetrieval:
         payload.update({"question": "chunk", "dataset_ids": [dataset.id]})
 
         if expected_message:
-            with pytest.raises(Exception) as exception_info:
+            with pytest.raises(Exception) as excinfo:
                 client.retrieve(**payload)
-            assert expected_message in str(exception_info.value), str(exception_info.value)
+            assert expected_message in str(excinfo.value), str(excinfo.value)
         else:
             chunks = client.retrieve(**payload)
             assert len(chunks) > 0, str(chunks)
@@ -235,9 +235,9 @@ class TestChunksRetrieval:
         payload.update({"question": "chunk test", "dataset_ids": [dataset.id]})
 
         if expected_message:
-            with pytest.raises(Exception) as exception_info:
+            with pytest.raises(Exception) as excinfo:
                 client.retrieve(**payload)
-            assert expected_message in str(exception_info.value), str(exception_info.value)
+            assert expected_message in str(excinfo.value), str(excinfo.value)
         else:
             chunks = client.retrieve(**payload)
             assert len(chunks) == expected_page_size, str(chunks)

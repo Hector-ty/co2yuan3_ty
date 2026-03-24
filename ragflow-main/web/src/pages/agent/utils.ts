@@ -1,14 +1,11 @@
 import {
-  DSL,
-  GlobalVariableType,
   IAgentForm,
   ICategorizeForm,
   ICategorizeItem,
   ICategorizeItemResult,
 } from '@/interfaces/database/agent';
 import { DSLComponents, RAGFlowNodeType } from '@/interfaces/database/flow';
-import { buildSelectOptions } from '@/utils/component-util';
-import { buildOptions, removeUselessFieldsFromValues } from '@/utils/form';
+import { removeUselessFieldsFromValues } from '@/utils/form';
 import { Edge, Node, XYPosition } from '@xyflow/react';
 import { FormInstance, FormListFieldData } from 'antd';
 import { humanId } from 'human-id';
@@ -24,20 +21,14 @@ import {
 import pipe from 'lodash/fp/pipe';
 import isObject from 'lodash/isObject';
 import {
-  AgentDialogueMode,
   CategorizeAnchorPointPositions,
   FileType,
   FileTypeSuffixMap,
-  InputMode,
   NoCopyOperatorsList,
   NoDebugOperatorsList,
   NodeHandleId,
   Operator,
-  TypesWithArray,
-  WebhookSecurityAuthType,
 } from './constant';
-import { BeginFormSchemaType } from './form/begin-form/schema';
-import { DataOperationsFormSchemaType } from './form/data-operations-form';
 import { ExtractorFormSchemaType } from './form/extractor-form';
 import { HierarchicalMergerFormSchemaType } from './form/hierarchical-merger-form';
 import { ParserFormSchemaType } from './form/parser-form';
@@ -87,7 +78,10 @@ const buildComponentDownstreamOrUpstream = (
 
 const removeUselessDataInTheOperator = curry(
   (operatorName: string, params: Record<string, unknown>) => {
-    if (operatorName === Operator.Categorize) {
+    if (
+      operatorName === Operator.Generate ||
+      operatorName === Operator.Categorize
+    ) {
       return removeUselessFieldsFromValues(params, '');
     }
     return params;
@@ -120,17 +114,13 @@ function buildAgentTools(edges: Edge[], nodes: Node[], nodeId: string) {
         return {
           component_name: Operator.Agent,
           id,
-          name,
+          name: name as string, // Cast name to string and provide fallback
           params: { ...formData },
         };
       }),
     );
   }
-  return { params, name: node?.data.name, id: node?.id } as {
-    params: IAgentForm;
-    name: string;
-    id: string;
-  };
+  return { params, name: node?.data.name, id: node?.id };
 }
 
 function filterTargetsBySourceHandleId(edges: Edge[], handleId: string) {
@@ -224,36 +214,6 @@ function transformParserParams(params: ParserFormSchemaType) {
             parse_method: cur.parse_method,
             lang: cur.lang,
           };
-          // Only include TCADP parameters if TCADP Parser is selected
-          if (cur.parse_method?.toLowerCase() === 'tcadp parser') {
-            filteredSetup.table_result_type = cur.table_result_type;
-            filteredSetup.markdown_image_response_type =
-              cur.markdown_image_response_type;
-          }
-          break;
-        case FileType.Spreadsheet:
-          filteredSetup = {
-            ...filteredSetup,
-            parse_method: cur.parse_method,
-          };
-          // Only include TCADP parameters if TCADP Parser is selected
-          if (cur.parse_method?.toLowerCase() === 'tcadp parser') {
-            filteredSetup.table_result_type = cur.table_result_type;
-            filteredSetup.markdown_image_response_type =
-              cur.markdown_image_response_type;
-          }
-          break;
-        case FileType.PowerPoint:
-          filteredSetup = {
-            ...filteredSetup,
-            parse_method: cur.parse_method,
-          };
-          // Only include TCADP parameters if TCADP Parser is selected
-          if (cur.parse_method?.toLowerCase() === 'tcadp parser') {
-            filteredSetup.table_result_type = cur.table_result_type;
-            filteredSetup.markdown_image_response_type =
-              cur.markdown_image_response_type;
-          }
           break;
         case FileType.Image:
           filteredSetup = {
@@ -289,19 +249,10 @@ function transformParserParams(params: ParserFormSchemaType) {
 }
 
 function transformSplitterParams(params: SplitterFormSchemaType) {
-  const { image_table_context_window, ...rest } = params;
-  const imageTableContextWindow = Number(image_table_context_window || 0);
   return {
-    ...rest,
+    ...params,
     overlapped_percent: Number(params.overlapped_percent) / 100,
     delimiters: transformObjectArrayToPureArray(params.delimiters, 'value'),
-    table_context_size: imageTableContextWindow,
-    image_context_size: imageTableContextWindow,
-
-    // Unset children delimiters if this option is not enabled
-    children_delimiters: params.enable_children
-      ? transformObjectArrayToPureArray(params.children_delimiters, 'value')
-      : [],
   };
 }
 
@@ -317,71 +268,6 @@ function transformHierarchicalMergerParams(
 
 function transformExtractorParams(params: ExtractorFormSchemaType) {
   return { ...params, prompts: [{ content: params.prompts, role: 'user' }] };
-}
-
-function transformDataOperationsParams(params: DataOperationsFormSchemaType) {
-  return {
-    ...params,
-    select_keys: params?.select_keys?.map((x) => x.name),
-    remove_keys: params?.remove_keys?.map((x) => x.name),
-    query: params.query.map((x) => x.input),
-  };
-}
-
-export function transformArrayToObject(
-  list?: Array<{ key: string; value: string }>,
-) {
-  if (!Array.isArray(list)) return {};
-  return list?.reduce<Record<string, any>>((pre, cur) => {
-    if (cur.key) {
-      pre[cur.key] = cur.value;
-    }
-    return pre;
-  }, {});
-}
-
-function transformRequestSchemaToJsonschema(
-  schema: BeginFormSchemaType['schema'],
-) {
-  const jsonSchema: Record<string, any> = {};
-  Object.entries(schema || {}).forEach(([key, value]) => {
-    if (Array.isArray(value)) {
-      jsonSchema[key] = {
-        type: 'object',
-        required: value.filter((x) => x.required).map((x) => x.key),
-        properties: value.reduce<Record<string, any>>((pre, cur) => {
-          pre[cur.key] = { type: cur.type };
-          return pre;
-        }, {}),
-      };
-    }
-  });
-
-  return jsonSchema;
-}
-
-function transformBeginParams(params: BeginFormSchemaType) {
-  if (params.mode === AgentDialogueMode.Webhook) {
-    const nextSecurity: Record<string, any> = {
-      ...params.security,
-      ip_whitelist: params.security?.ip_whitelist.map((x) => x.value),
-    };
-    if (params.security?.auth_type === WebhookSecurityAuthType.Jwt) {
-      nextSecurity.jwt = {
-        ...nextSecurity.jwt,
-        required_claims: nextSecurity.jwt?.required_claims.map((x) => x.value),
-      };
-    }
-    return {
-      ...params,
-      schema: transformRequestSchemaToJsonschema(params.schema),
-      security: nextSecurity,
-    };
-  }
-
-  return {
-    ...params,
-  };
 }
 
 // construct a dsl based on the node information of the graph
@@ -430,12 +316,7 @@ export const buildDslComponentsByGraph = (
         case Operator.Extractor:
           params = transformExtractorParams(params);
           break;
-        case Operator.DataOperations:
-          params = transformDataOperationsParams(params);
-          break;
-        case Operator.Begin:
-          params = transformBeginParams(params);
-          break;
+
         default:
           break;
       }
@@ -453,32 +334,6 @@ export const buildDslComponentsByGraph = (
     });
 
   return components;
-};
-
-export const buildDslGlobalVariables = (
-  dsl: DSL,
-  globalVariables?: Record<string, GlobalVariableType>,
-) => {
-  if (!globalVariables) {
-    return { globals: dsl.globals, variables: dsl.variables || {} };
-  }
-
-  let globalVariablesTemp: Record<string, any> = {};
-  let globalSystem: Record<string, any> = {};
-  Object.keys(dsl.globals)?.forEach((key) => {
-    if (key.indexOf('sys') > -1) {
-      globalSystem[key] = dsl.globals[key];
-    }
-  });
-  Object.keys(globalVariables).forEach((key) => {
-    globalVariablesTemp['env.' + key] = globalVariables[key].value;
-  });
-
-  const globalVariablesResult = {
-    ...globalSystem,
-    ...globalVariablesTemp,
-  };
-  return { globals: globalVariablesResult, variables: globalVariables };
 };
 
 export const receiveMessageError = (res: any) =>
@@ -644,6 +499,12 @@ export const duplicateNodeForm = (nodeData?: RAGFlowNodeType['data']) => {
     }, {});
   }
 
+  // Delete the downstream nodes corresponding to the yes and no fields of the Relevant operator
+  if (nodeData?.label === Operator.Relevant) {
+    form.yes = undefined;
+    form.no = undefined;
+  }
+
   return {
     ...(nodeData ?? { label: '' }),
     form,
@@ -734,7 +595,7 @@ export function convertToObjectArray<T extends string | number | boolean>(
 
 /**
    * convert the following object into a list
-   *
+   * 
    * {
       "product_related": {
       "description": "The question is about product usage, appearance and how it works.",
@@ -834,13 +695,3 @@ export function buildBeginQueryWithObject(
 
   return nextInputs;
 }
-
-export function getArrayElementType(type: string) {
-  return typeof type === 'string' ? (type.match(/<([^>]+)>/)?.at(1) ?? '') : '';
-}
-
-export function buildConversationVariableSelectOptions() {
-  return buildSelectOptions(Object.values(TypesWithArray));
-}
-
-export const InputModeOptions = buildOptions(InputMode);

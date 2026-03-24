@@ -2,7 +2,8 @@ import {
   ChatVariableEnabledField,
   EmptyConversationId,
 } from '@/constants/chat';
-import { IMessage, Message } from '@/interfaces/database/chat';
+import { Message } from '@/interfaces/database/chat';
+import { IMessage } from '@/pages/chat/interface';
 import { omit } from 'lodash';
 import { v4 as uuid } from 'uuid';
 
@@ -26,7 +27,7 @@ export const buildMessageListWithUuid = (messages?: Message[]) => {
   );
 };
 
-export const generateConversationId = () => {
+export const getConversationId = () => {
   return uuid().replace(/-/g, '');
 };
 
@@ -83,13 +84,3 @@ export function setChatVariableEnabledFieldValuePage() {
 
   return variableCheckBoxFieldMap;
 }
-
-const oldReg = /(#{2}\d+\${2})/g;
-export const currentReg = /\[ID:(\d+)\]/g;
-
-// To be compatible with the old index matching mode
-export const replaceTextByOldReg = (text: string) => {
-  return text?.replace(oldReg, (substring: string) => {
-    return `[ID:${substring.slice(2, -2)}]`;
-  });
-};

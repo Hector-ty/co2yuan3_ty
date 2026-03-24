@@ -13,7 +13,6 @@ export enum RunningStatus {
   CANCEL = '2', // need to refresh
   DONE = '3', // need to refresh
   FAIL = '4', // need to refresh
-  SCHEDULE = '5',
 }
 
 export const RunningStatusMap = {
@@ -22,7 +21,6 @@ export const RunningStatusMap = {
   [RunningStatus.CANCEL]: 'Cancel',
   [RunningStatus.DONE]: 'Success',
   [RunningStatus.FAIL]: 'Failed',
-  [RunningStatus.SCHEDULE]: 'Schedule',
 };
 
 export enum ModelVariableType {
@@ -62,7 +60,6 @@ export enum LlmModelType {
   Speech2text = 'speech2text',
   Rerank = 'rerank',
   TTS = 'tts',
-  Ocr = 'ocr',
 }
 
 export enum KnowledgeSearchParams {
@@ -93,5 +90,3 @@ export enum DocumentParserType {
   Tag = 'tag',
   KnowledgeGraph = 'knowledge_graph',
 }
-
-export const TagRenameId = 'tagRename';

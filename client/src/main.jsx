@@ -141,13 +141,14 @@ const theme = createTheme({
   }
 });
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AppProvider>
-        <App />
-      </AppProvider>
-    </ThemeProvider>
-  </React.StrictMode>
+// 移除 StrictMode 以提升开发模式下的性能（开发模式会双渲染）
+// 注意：生产构建时 React 会自动优化，所以移除 StrictMode 不会影响生产性能
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <ThemeProvider theme={theme}>
+    <CssBaseline />
+    <AppProvider>
+      <App />
+    </AppProvider>
+  </ThemeProvider>
 );

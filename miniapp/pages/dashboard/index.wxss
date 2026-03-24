@@ -1,0 +1,45 @@
+.dashboard-page {
+  padding-bottom: 32rpx;
+}
+
+.loading-text {
+  font-size: 26rpx;
+  color: #666666;
+}
+
+.error-text {
+  font-size: 26rpx;
+  color: #d32f2f;
+}
+
+.empty-text {
+  font-size: 26rpx;
+  color: #999999;
+}
+
+.kpi-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.kpi-block {
+  flex: 1;
+}
+
+.list-item {
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #eeeeee;
+}
+
+.list-title {
+  font-size: 28rpx;
+  font-weight: 500;
+  margin-bottom: 4rpx;
+}
+
+.list-sub {
+  font-size: 24rpx;
+  color: #666666;
+}
+

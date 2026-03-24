@@ -14,19 +14,19 @@
 #  limitations under the License.
 #
 import datetime
-import json
 import logging
 import pathlib
 import re
 from io import BytesIO
 
 import xxhash
-from quart import request, send_file
+from flask import request, send_file
 from peewee import OperationalError
 from pydantic import BaseModel, Field, validator
 
+from api import settings
 from api.constants import FILE_NAME_LEN_LIMIT
-from api.db import FileType
+from api.db import FileSource, FileType, LLMType, ParserType, TaskStatus
 from api.db.db_models import File, Task
 from api.db.services.document_service import DocumentService
 from api.db.services.file2document_service import File2DocumentService
@@ -34,17 +34,15 @@ from api.db.services.file_service import FileService
 from api.db.services.knowledgebase_service import KnowledgebaseService
 from api.db.services.llm_service import LLMBundle
 from api.db.services.tenant_llm_service import TenantLLMService
-from api.db.services.task_service import TaskService, queue_tasks, cancel_all_task_of
-from common.metadata_utils import meta_filter, convert_conditions
-from api.utils.api_utils import check_duplicate_ids, construct_json_result, get_error_data_result, get_parser_config, get_result, server_error_response, token_required, \
-    get_request_json
+from api.db.services.task_service import TaskService, queue_tasks
+from api.db.services.dialog_service import meta_filter, convert_conditions
+from api.utils.api_utils import check_duplicate_ids, construct_json_result, get_error_data_result, get_parser_config, get_result, server_error_response, token_required
 from rag.app.qa import beAdoc, rmPrefix
 from rag.app.tag import label_question
 from rag.nlp import rag_tokenizer, search
 from rag.prompts.generator import cross_languages, keyword_extraction
-from common.string_utils import remove_redundant_spaces
-from common.constants import RetCode, LLMType, ParserType, TaskStatus, FileSource
-from common import settings
+from rag.utils import rmSpace
+from rag.utils.storage_factory import STORAGE_IMPL
 
 MAXIMUM_OF_UPLOADING_FILES = 256
 
@@ -71,7 +69,7 @@ class Chunk(BaseModel):
 
 @manager.route("/datasets/<dataset_id>/documents", methods=["POST"])  # noqa: F821
 @token_required
-async def upload(dataset_id, tenant_id):
+def upload(dataset_id, tenant_id):
     """
     Upload documents to a dataset.
     ---
@@ -95,10 +93,6 @@ async def upload(dataset_id, tenant_id):
         type: file
         required: true
         description: Document files to upload.
-      - in: formData
-        name: parent_path
-        type: string
-        description: Optional nested path under the parent folder. Uses '/' separators.
     responses:
       200:
         description: Successfully uploaded documents.
@@ -132,16 +126,14 @@ async def upload(dataset_id, tenant_id):
                     type: string
                     description: Processing status.
     """
-    form = await request.form
-    files = await request.files
-    if "file" not in files:
-        return get_error_data_result(message="No file part!", code=RetCode.ARGUMENT_ERROR)
-    file_objs = files.getlist("file")
+    if "file" not in request.files:
+        return get_error_data_result(message="No file part!", code=settings.RetCode.ARGUMENT_ERROR)
+    file_objs = request.files.getlist("file")
     for file_obj in file_objs:
         if file_obj.filename == "":
-            return get_result(message="No file selected!", code=RetCode.ARGUMENT_ERROR)
+            return get_result(message="No file selected!", code=settings.RetCode.ARGUMENT_ERROR)
         if len(file_obj.filename.encode("utf-8")) > FILE_NAME_LEN_LIMIT:
-            return get_result(message=f"File name must be {FILE_NAME_LEN_LIMIT} bytes or less.", code=RetCode.ARGUMENT_ERROR)
+            return get_result(message=f"File name must be {FILE_NAME_LEN_LIMIT} bytes or less.", code=settings.RetCode.ARGUMENT_ERROR)
     """
     # total size
     total_size = 0
@@ -153,15 +145,15 @@ async def upload(dataset_id, tenant_id):
     if total_size > MAX_TOTAL_FILE_SIZE:
         return get_result(
             message=f"Total file size exceeds 10MB limit! ({total_size / (1024 * 1024):.2f} MB)",
-            code=RetCode.ARGUMENT_ERROR,
+            code=settings.RetCode.ARGUMENT_ERROR,
         )
     """
     e, kb = KnowledgebaseService.get_by_id(dataset_id)
     if not e:
         raise LookupError(f"Can't find the dataset with ID {dataset_id}!")
-    err, files = FileService.upload_document(kb, file_objs, tenant_id, parent_path=form.get("parent_path"))
+    err, files = FileService.upload_document(kb, file_objs, tenant_id)
     if err:
-        return get_result(message="\n".join(err), code=RetCode.SERVER_ERROR)
+        return get_result(message="\n".join(err), code=settings.RetCode.SERVER_ERROR)
     # rename key's name
     renamed_doc_list = []
     for file in files:
@@ -183,7 +175,7 @@ async def upload(dataset_id, tenant_id):
 
 @manager.route("/datasets/<dataset_id>/documents/<document_id>", methods=["PUT"])  # noqa: F821
 @token_required
-async def update_doc(tenant_id, dataset_id, document_id):
+def update_doc(tenant_id, dataset_id, document_id):
     """
     Update a document within a dataset.
     ---
@@ -232,12 +224,12 @@ async def update_doc(tenant_id, dataset_id, document_id):
         schema:
           type: object
     """
-    req = await get_request_json()
+    req = request.json
     if not KnowledgebaseService.query(id=dataset_id, tenant_id=tenant_id):
         return get_error_data_result(message="You don't own the dataset.")
     e, kb = KnowledgebaseService.get_by_id(dataset_id)
     if not e:
-        return get_error_data_result(message="Can't find this dataset!")
+        return get_error_data_result(message="Can't find this knowledgebase!")
     doc = DocumentService.query(kb_id=dataset_id, id=document_id)
     if not doc:
         return get_error_data_result(message="The dataset doesn't own the document.")
@@ -261,12 +253,12 @@ async def update_doc(tenant_id, dataset_id, document_id):
         if len(req["name"].encode("utf-8")) > FILE_NAME_LEN_LIMIT:
             return get_result(
                 message=f"File name must be {FILE_NAME_LEN_LIMIT} bytes or less.",
-                code=RetCode.ARGUMENT_ERROR,
+                code=settings.RetCode.ARGUMENT_ERROR,
             )
         if pathlib.Path(req["name"].lower()).suffix != pathlib.Path(doc.name.lower()).suffix:
             return get_result(
                 message="The extension of file can't be changed",
-                code=RetCode.ARGUMENT_ERROR,
+                code=settings.RetCode.ARGUMENT_ERROR,
             )
         for d in DocumentService.query(name=req["name"], kb_id=doc.kb_id):
             if d.name == req["name"]:
@@ -322,7 +314,9 @@ async def update_doc(tenant_id, dataset_id, document_id):
             try:
                 if not DocumentService.update_by_id(doc.id, {"status": str(status)}):
                     return get_error_data_result(message="Database error (Document update)!")
+
                 settings.docStoreConn.update({"doc_id": doc.id}, {"available_int": status}, search.index_name(kb.tenant_id), doc.kb_id)
+                return get_result(data=True)
             except Exception as e:
                 return server_error_response(e)
 
@@ -349,17 +343,19 @@ async def update_doc(tenant_id, dataset_id, document_id):
     }
     renamed_doc = {}
     for key, value in doc.to_dict().items():
+        if key == "run":
+            renamed_doc["run"] = run_mapping.get(str(value))
         new_key = key_mapping.get(key, key)
         renamed_doc[new_key] = value
         if key == "run":
-            renamed_doc["run"] = run_mapping.get(str(value))
+            renamed_doc["run"] = run_mapping.get(value)
 
     return get_result(data=renamed_doc)
 
 
 @manager.route("/datasets/<dataset_id>/documents/<document_id>", methods=["GET"])  # noqa: F821
 @token_required
-async def download(tenant_id, dataset_id, document_id):
+def download(tenant_id, dataset_id, document_id):
     """
     Download a document from a dataset.
     ---
@@ -404,15 +400,15 @@ async def download(tenant_id, dataset_id, document_id):
         return get_error_data_result(message=f"The dataset not own the document {document_id}.")
     # The process of downloading
     doc_id, doc_location = File2DocumentService.get_storage_address(doc_id=document_id)  # minio address
-    file_stream = settings.STORAGE_IMPL.get(doc_id, doc_location)
+    file_stream = STORAGE_IMPL.get(doc_id, doc_location)
     if not file_stream:
-        return construct_json_result(message="This file is empty.", code=RetCode.DATA_ERROR)
+        return construct_json_result(message="This file is empty.", code=settings.RetCode.DATA_ERROR)
     file = BytesIO(file_stream)
     # Use send_file with a proper filename and MIME type
-    return await send_file(
+    return send_file(
         file,
         as_attachment=True,
-        attachment_filename=doc[0].name,
+        download_name=doc[0].name,
         mimetype="application/octet-stream",  # Set a default MIME type
     )
 
@@ -533,7 +529,7 @@ def list_docs(dataset_id, tenant_id):
       return get_error_data_result(message=f"You don't own the dataset {dataset_id}. ")
 
     q = request.args
-    document_id = q.get("id")
+    document_id = q.get("id")  
     name        = q.get("name")
 
     if document_id and not DocumentService.query(id=document_id, kb_id=dataset_id):
@@ -542,39 +538,23 @@ def list_docs(dataset_id, tenant_id):
         return get_error_data_result(message=f"You don't own the document {name}.")
 
     page        = int(q.get("page", 1))
-    page_size   = int(q.get("page_size", 30))
+    page_size   = int(q.get("page_size", 30))  
     orderby     = q.get("orderby", "create_time")
     desc        = str(q.get("desc", "true")).strip().lower() != "false"
     keywords    = q.get("keywords", "")
 
     # filters - align with OpenAPI parameter names
-    suffix               = q.getlist("suffix")
-    run_status           = q.getlist("run")
-    create_time_from     = int(q.get("create_time_from", 0))
-    create_time_to       = int(q.get("create_time_to", 0))
-    metadata_condition_raw = q.get("metadata_condition")
-    metadata_condition = {}
-    if metadata_condition_raw:
-        try:
-            metadata_condition = json.loads(metadata_condition_raw)
-        except Exception:
-            return get_error_data_result(message="metadata_condition must be valid JSON.")
-    if metadata_condition and not isinstance(metadata_condition, dict):
-        return get_error_data_result(message="metadata_condition must be an object.")
+    suffix               = q.getlist("suffix") 
+    run_status           = q.getlist("run")   
+    create_time_from     = int(q.get("create_time_from", 0))  
+    create_time_to       = int(q.get("create_time_to", 0))    
 
-    # map run status (text or numeric) - align with API parameter
+    # map run status (accept text or numeric) - align with API parameter
     run_status_text_to_numeric = {"UNSTART": "0", "RUNNING": "1", "CANCEL": "2", "DONE": "3", "FAIL": "4"}
     run_status_converted = [run_status_text_to_numeric.get(v, v) for v in run_status]
 
-    doc_ids_filter = None
-    if metadata_condition:
-        metas = DocumentService.get_flatted_meta_by_kbs([dataset_id])
-        doc_ids_filter = meta_filter(metas, convert_conditions(metadata_condition), metadata_condition.get("logic", "and"))
-        if metadata_condition.get("conditions") and not doc_ids_filter:
-            return get_result(data={"total": 0, "docs": []})
-
     docs, total = DocumentService.get_list(
-        dataset_id, page, page_size, orderby, desc, keywords, document_id, name, suffix, run_status_converted, doc_ids_filter
+        dataset_id, page, page_size, orderby, desc, keywords, document_id, name, suffix, run_status_converted
     )
 
     # time range filter (0 means no bound)
@@ -588,7 +568,7 @@ def list_docs(dataset_id, tenant_id):
     # rename keys + map run status back to text for output
     key_mapping = {
         "chunk_num": "chunk_count",
-        "kb_id": "dataset_id",
+        "kb_id": "dataset_id", 
         "token_num": "token_count",
         "parser_id": "chunk_method",
     }
@@ -603,73 +583,9 @@ def list_docs(dataset_id, tenant_id):
 
     return get_result(data={"total": total, "docs": output_docs})
 
-
-@manager.route("/datasets/<dataset_id>/metadata/summary", methods=["GET"])  # noqa: F821
-@token_required
-def metadata_summary(dataset_id, tenant_id):
-    if not KnowledgebaseService.accessible(kb_id=dataset_id, user_id=tenant_id):
-        return get_error_data_result(message=f"You don't own the dataset {dataset_id}. ")
-
-    try:
-        summary = DocumentService.get_metadata_summary(dataset_id)
-        return get_result(data={"summary": summary})
-    except Exception as e:
-        return server_error_response(e)
-
-
-@manager.route("/datasets/<dataset_id>/metadata/update", methods=["POST"])  # noqa: F821
-@token_required
-async def metadata_batch_update(dataset_id, tenant_id):
-    if not KnowledgebaseService.accessible(kb_id=dataset_id, user_id=tenant_id):
-        return get_error_data_result(message=f"You don't own the dataset {dataset_id}. ")
-
-    req = await get_request_json()
-    selector = req.get("selector", {}) or {}
-    updates = req.get("updates", []) or []
-    deletes = req.get("deletes", []) or []
-
-    if not isinstance(selector, dict):
-        return get_error_data_result(message="selector must be an object.")
-    if not isinstance(updates, list) or not isinstance(deletes, list):
-        return get_error_data_result(message="updates and deletes must be lists.")
-
-    metadata_condition = selector.get("metadata_condition", {}) or {}
-    if metadata_condition and not isinstance(metadata_condition, dict):
-        return get_error_data_result(message="metadata_condition must be an object.")
-
-    document_ids = selector.get("document_ids", []) or []
-    if document_ids and not isinstance(document_ids, list):
-        return get_error_data_result(message="document_ids must be a list.")
-
-    for upd in updates:
-        if not isinstance(upd, dict) or not upd.get("key") or "value" not in upd:
-            return get_error_data_result(message="Each update requires key and value.")
-    for d in deletes:
-        if not isinstance(d, dict) or not d.get("key"):
-            return get_error_data_result(message="Each delete requires key.")
-
-    kb_doc_ids = KnowledgebaseService.list_documents_by_ids([dataset_id])
-    target_doc_ids = set(kb_doc_ids)
-    if document_ids:
-        invalid_ids = set(document_ids) - set(kb_doc_ids)
-        if invalid_ids:
-            return get_error_data_result(message=f"These documents do not belong to dataset {dataset_id}: {', '.join(invalid_ids)}")
-        target_doc_ids = set(document_ids)
-
-    if metadata_condition:
-        metas = DocumentService.get_flatted_meta_by_kbs([dataset_id])
-        filtered_ids = set(meta_filter(metas, convert_conditions(metadata_condition), metadata_condition.get("logic", "and")))
-        target_doc_ids = target_doc_ids & filtered_ids
-        if metadata_condition.get("conditions") and not target_doc_ids:
-            return get_result(data={"updated": 0, "matched_docs": 0})
-
-    target_doc_ids = list(target_doc_ids)
-    updated = DocumentService.batch_update_metadata(dataset_id, target_doc_ids, updates, deletes)
-    return get_result(data={"updated": updated, "matched_docs": len(target_doc_ids)})
-
 @manager.route("/datasets/<dataset_id>/documents", methods=["DELETE"])  # noqa: F821
 @token_required
-async def delete(tenant_id, dataset_id):
+def delete(tenant_id, dataset_id):
     """
     Delete documents from a dataset.
     ---
@@ -708,7 +624,7 @@ async def delete(tenant_id, dataset_id):
     """
     if not KnowledgebaseService.accessible(kb_id=dataset_id, user_id=tenant_id):
         return get_error_data_result(message=f"You don't own the dataset {dataset_id}. ")
-    req = await get_request_json()
+    req = request.json
     if not req:
         doc_ids = None
     else:
@@ -754,16 +670,16 @@ async def delete(tenant_id, dataset_id):
             )
             File2DocumentService.delete_by_document_id(doc_id)
 
-            settings.STORAGE_IMPL.rm(b, n)
+            STORAGE_IMPL.rm(b, n)
             success_count += 1
         except Exception as e:
             errors += str(e)
 
     if not_found:
-        return get_result(message=f"Documents not found: {not_found}", code=RetCode.DATA_ERROR)
+        return get_result(message=f"Documents not found: {not_found}", code=settings.RetCode.DATA_ERROR)
 
     if errors:
-        return get_result(message=errors, code=RetCode.SERVER_ERROR)
+        return get_result(message=errors, code=settings.RetCode.SERVER_ERROR)
 
     if duplicate_messages:
         if success_count > 0:
@@ -779,7 +695,7 @@ async def delete(tenant_id, dataset_id):
 
 @manager.route("/datasets/<dataset_id>/chunks", methods=["POST"])  # noqa: F821
 @token_required
-async def parse(tenant_id, dataset_id):
+def parse(tenant_id, dataset_id):
     """
     Start parsing documents into chunks.
     ---
@@ -818,7 +734,7 @@ async def parse(tenant_id, dataset_id):
     """
     if not KnowledgebaseService.accessible(kb_id=dataset_id, user_id=tenant_id):
         return get_error_data_result(message=f"You don't own the dataset {dataset_id}.")
-    req = await get_request_json()
+    req = request.json
     if not req.get("document_ids"):
         return get_error_data_result("`document_ids` is required")
     doc_list = req.get("document_ids")
@@ -847,7 +763,7 @@ async def parse(tenant_id, dataset_id):
         queue_tasks(doc, bucket, name, 0)
         success_count += 1
     if not_found:
-        return get_result(message=f"Documents not found: {not_found}", code=RetCode.DATA_ERROR)
+        return get_result(message=f"Documents not found: {not_found}", code=settings.RetCode.DATA_ERROR)
     if duplicate_messages:
         if success_count > 0:
             return get_result(
@@ -862,7 +778,7 @@ async def parse(tenant_id, dataset_id):
 
 @manager.route("/datasets/<dataset_id>/chunks", methods=["DELETE"])  # noqa: F821
 @token_required
-async def stop_parsing(tenant_id, dataset_id):
+def stop_parsing(tenant_id, dataset_id):
     """
     Stop parsing documents into chunks.
     ---
@@ -901,7 +817,7 @@ async def stop_parsing(tenant_id, dataset_id):
     """
     if not KnowledgebaseService.accessible(kb_id=dataset_id, user_id=tenant_id):
         return get_error_data_result(message=f"You don't own the dataset {dataset_id}.")
-    req = await get_request_json()
+    req = request.json
 
     if not req.get("document_ids"):
         return get_error_data_result("`document_ids` is required")
@@ -916,8 +832,6 @@ async def stop_parsing(tenant_id, dataset_id):
             return get_error_data_result(message=f"You don't own the document {id}.")
         if int(doc[0].progress) == 1 or doc[0].progress == 0:
             return get_error_data_result("Can't stop parsing document with progress at 0 or 1")
-        # Send cancellation signal via Redis to stop background task
-        cancel_all_task_of(id)
         info = {"run": "2", "progress": 0, "chunk_num": 0}
         DocumentService.update_by_id(id, info)
         settings.docStoreConn.delete({"doc_id": doc[0].id}, search.index_name(tenant_id), dataset_id)
@@ -971,7 +885,7 @@ def list_chunks(tenant_id, dataset_id, document_id):
         type: string
         required: false
         default: ""
-        description: Chunk id.
+        description: Chunk Id.
       - in: header
         name: Authorization
         type: string
@@ -1055,7 +969,7 @@ def list_chunks(tenant_id, dataset_id, document_id):
     if req.get("id"):
         chunk = settings.docStoreConn.get(req.get("id"), search.index_name(tenant_id), [dataset_id])
         if not chunk:
-            return get_result(message=f"Chunk not found: {dataset_id}/{req.get('id')}", code=RetCode.NOT_FOUND)
+            return get_result(message=f"Chunk not found: {dataset_id}/{req.get('id')}", code=settings.RetCode.NOT_FOUND)
         k = []
         for n in chunk.keys():
             if re.search(r"(_vec$|_sm_|_tks|_ltks)", n):
@@ -1080,13 +994,13 @@ def list_chunks(tenant_id, dataset_id, document_id):
         res["chunks"].append(final_chunk)
         _ = Chunk(**final_chunk)
 
-    elif settings.docStoreConn.index_exist(search.index_name(tenant_id), dataset_id):
+    elif settings.docStoreConn.indexExist(search.index_name(tenant_id), dataset_id):
         sres = settings.retriever.search(query, search.index_name(tenant_id), [dataset_id], emb_mdl=None, highlight=True)
         res["total"] = sres.total
         for id in sres.ids:
             d = {
                 "id": id,
-                "content": (remove_redundant_spaces(sres.highlight[id]) if question and id in sres.highlight else sres.field[id].get("content_with_weight", "")),
+                "content": (rmSpace(sres.highlight[id]) if question and id in sres.highlight else sres.field[id].get("content_with_weight", "")),
                 "document_id": sres.field[id]["doc_id"],
                 "docnm_kwd": sres.field[id]["docnm_kwd"],
                 "important_keywords": sres.field[id].get("important_kwd", []),
@@ -1105,7 +1019,7 @@ def list_chunks(tenant_id, dataset_id, document_id):
     "/datasets/<dataset_id>/documents/<document_id>/chunks", methods=["POST"]
 )
 @token_required
-async def add_chunk(tenant_id, dataset_id, document_id):
+def add_chunk(tenant_id, dataset_id, document_id):
     """
     Add a chunk to a document.
     ---
@@ -1175,7 +1089,7 @@ async def add_chunk(tenant_id, dataset_id, document_id):
     if not doc:
         return get_error_data_result(message=f"You don't own the document {document_id}.")
     doc = doc[0]
-    req = await get_request_json()
+    req = request.json
     if not str(req.get("content", "")).strip():
         return get_error_data_result(message="`content` is required")
     if "important_keywords" in req:
@@ -1234,7 +1148,7 @@ async def add_chunk(tenant_id, dataset_id, document_id):
     "datasets/<dataset_id>/documents/<document_id>/chunks", methods=["DELETE"]
 )
 @token_required
-async def rm_chunk(tenant_id, dataset_id, document_id):
+def rm_chunk(tenant_id, dataset_id, document_id):
     """
     Remove chunks from a document.
     ---
@@ -1281,14 +1195,11 @@ async def rm_chunk(tenant_id, dataset_id, document_id):
     docs = DocumentService.get_by_ids([document_id])
     if not docs:
         raise LookupError(f"Can't find the document with ID {document_id}!")
-    req = await get_request_json()
+    req = request.json
     condition = {"doc_id": document_id}
     if "chunk_ids" in req:
         unique_chunk_ids, duplicate_messages = check_duplicate_ids(req["chunk_ids"], "chunk")
         condition["id"] = unique_chunk_ids
-    else:
-        unique_chunk_ids = []
-        duplicate_messages = []
     chunk_number = settings.docStoreConn.delete(condition, search.index_name(tenant_id), dataset_id)
     if chunk_number != 0:
         DocumentService.decrement_chunk_num(document_id, dataset_id, 1, chunk_number, 0)
@@ -1308,7 +1219,7 @@ async def rm_chunk(tenant_id, dataset_id, document_id):
     "/datasets/<dataset_id>/documents/<document_id>/chunks/<chunk_id>", methods=["PUT"]
 )
 @token_required
-async def update_chunk(tenant_id, dataset_id, document_id, chunk_id):
+def update_chunk(tenant_id, dataset_id, document_id, chunk_id):
     """
     Update a chunk within a document.
     ---
@@ -1370,8 +1281,8 @@ async def update_chunk(tenant_id, dataset_id, document_id, chunk_id):
     if not doc:
         return get_error_data_result(message=f"You don't own the document {document_id}.")
     doc = doc[0]
-    req = await get_request_json()
-    if "content" in req and req["content"] is not None:
+    req = request.json
+    if "content" in req:
         content = req["content"]
     else:
         content = chunk.get("content_with_weight", "")
@@ -1390,10 +1301,6 @@ async def update_chunk(tenant_id, dataset_id, document_id, chunk_id):
         d["question_tks"] = rag_tokenizer.tokenize("\n".join(req["questions"]))
     if "available" in req:
         d["available_int"] = int(req["available"])
-    if "positions" in req:
-        if not isinstance(req["positions"], list):
-            return get_error_data_result("`positions` should be a list")
-        d["position_int"] = req["positions"]
     embd_id = DocumentService.get_embd_id(document_id)
     embd_mdl = TenantLLMService.model_instance(tenant_id, LLMType.EMBEDDING.value, embd_id)
     if doc.parser_id == ParserType.QA:
@@ -1412,7 +1319,7 @@ async def update_chunk(tenant_id, dataset_id, document_id, chunk_id):
 
 @manager.route("/retrieval", methods=["POST"])  # noqa: F821
 @token_required
-async def retrieval_test(tenant_id):
+def retrieval_test(tenant_id):
     """
     Retrieve chunks based on a query.
     ---
@@ -1493,7 +1400,7 @@ async def retrieval_test(tenant_id):
                     format: float
                     description: Similarity score.
     """
-    req = await get_request_json()
+    req = request.json
     if not req.get("dataset_ids"):
         return get_error_data_result("`dataset_ids` is required.")
     kb_ids = req["dataset_ids"]
@@ -1507,7 +1414,7 @@ async def retrieval_test(tenant_id):
     if len(embd_nms) != 1:
         return get_result(
             message='Datasets use different embedding models."',
-            code=RetCode.DATA_ERROR,
+            code=settings.RetCode.DATA_ERROR,
         )
     if "question" not in req:
         return get_error_data_result("`question` is required.")
@@ -1516,7 +1423,6 @@ async def retrieval_test(tenant_id):
     question = req["question"]
     doc_ids = req.get("document_ids", [])
     use_kg = req.get("use_kg", False)
-    toc_enhance = req.get("toc_enhance", False)
     langs = req.get("cross_languages", [])
     if not isinstance(doc_ids, list):
         return get_error_data_result("`documents` should be a list")
@@ -1525,14 +1431,9 @@ async def retrieval_test(tenant_id):
         if doc_id not in doc_ids_list:
             return get_error_data_result(f"The datasets don't own the document {doc_id}")
     if not doc_ids:
-        metadata_condition = req.get("metadata_condition", {}) or {}
+        metadata_condition = req.get("metadata_condition", {})
         metas = DocumentService.get_meta_by_kbs(kb_ids)
-        doc_ids = meta_filter(metas, convert_conditions(metadata_condition), metadata_condition.get("logic", "and"))
-        # If metadata_condition has conditions but no docs match, return empty result
-        if not doc_ids and metadata_condition.get("conditions"):
-            return get_result(data={"total": 0, "chunks": [], "doc_aggs": {}})
-        if metadata_condition and not doc_ids:
-            doc_ids = ["-999"]
+        doc_ids = meta_filter(metas, convert_conditions(metadata_condition))
     similarity_threshold = float(req.get("similarity_threshold", 0.2))
     vector_similarity_weight = float(req.get("vector_similarity_weight", 0.3))
     top = int(req.get("top_k", 1024))
@@ -1552,11 +1453,11 @@ async def retrieval_test(tenant_id):
             rerank_mdl = LLMBundle(kb.tenant_id, LLMType.RERANK, llm_name=req["rerank_id"])
 
         if langs:
-            question = await cross_languages(kb.tenant_id, None, question, langs)
+            question = cross_languages(kb.tenant_id, None, question, langs)
 
         if req.get("keyword", False):
             chat_mdl = LLMBundle(kb.tenant_id, LLMType.CHAT)
-            question += await keyword_extraction(chat_mdl, question)
+            question += keyword_extraction(chat_mdl, question)
 
         ranks = settings.retriever.retrieval(
             question,
@@ -1573,13 +1474,8 @@ async def retrieval_test(tenant_id):
             highlight=highlight,
             rank_feature=label_question(question, kbs),
         )
-        if toc_enhance:
-            chat_mdl = LLMBundle(kb.tenant_id, LLMType.CHAT)
-            cks = settings.retriever.retrieval_by_toc(question, ranks["chunks"], tenant_ids, chat_mdl, size)
-            if cks:
-                ranks["chunks"] = cks
         if use_kg:
-            ck = await settings.kg_retriever.retrieval(question, [k.tenant_id for k in kbs], kb_ids, embd_mdl, LLMBundle(kb.tenant_id, LLMType.CHAT))
+            ck = settings.kg_retriever.retrieval(question, [k.tenant_id for k in kbs], kb_ids, embd_mdl, LLMBundle(kb.tenant_id, LLMType.CHAT))
             if ck["content_with_weight"]:
                 ranks["chunks"].insert(0, ck)
 
@@ -1609,6 +1505,6 @@ async def retrieval_test(tenant_id):
         if str(e).find("not_found") > 0:
             return get_result(
                 message="No chunk found! Check the chunk status please!",
-                code=RetCode.DATA_ERROR,
+                code=settings.RetCode.DATA_ERROR,
             )
         return server_error_response(e)

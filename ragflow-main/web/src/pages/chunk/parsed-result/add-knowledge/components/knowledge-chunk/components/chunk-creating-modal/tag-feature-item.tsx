@@ -8,10 +8,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { NumberInput } from '@/components/ui/input';
-import {
-  useFetchKnowledgeBaseConfiguration,
-  useFetchTagListByKnowledgeIds,
-} from '@/hooks/use-knowledge-request';
+import { useFetchTagListByKnowledgeIds } from '@/hooks/knowledge-hooks';
+import { useFetchKnowledgeBaseConfiguration } from '@/hooks/use-knowledge-request';
 import { CircleMinus, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useFieldArray, useFormContext } from 'react-hook-form';

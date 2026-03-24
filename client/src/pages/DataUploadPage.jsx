@@ -25,6 +25,7 @@ import {
 import { CloudUpload as CloudUploadIcon, Delete as DeleteIcon, Save as SaveIcon, Cancel as CancelIcon } from '@mui/icons-material';
 import axios from 'axios';
 import * as XLSX from 'xlsx'; // 导入 xlsx 库用于前端解析文件头部
+import { formatNumber } from '../utils/formatNumber';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -341,7 +342,7 @@ const DataUploadPage = () => {
                   </IconButton>
                 }
               >
-                <ListItemText primary={file.name} secondary={`${(file.size / 1024).toFixed(2)} KB`} />
+                <ListItemText primary={file.name} secondary={`${formatNumber(file.size / 1024)} KB`} />
               </ListItem>
             ))}
           </List>

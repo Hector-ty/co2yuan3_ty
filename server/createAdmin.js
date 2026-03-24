@@ -8,7 +8,7 @@ if (!process.env.MONGODB_URI) {
   process.exit(1);
 }
 
-const createAdminUser = async (email, password, unitName, region) => {
+const createAdminUser = async (email, password, unitName, creditCode, region, address, buildingArea, personnelCount, contactPerson, contactPhone) => {
   try {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('MongoDB connected for admin creation.');
@@ -35,7 +35,13 @@ const createAdminUser = async (email, password, unitName, region) => {
       email,
       password, // Pass plain text password, let pre('save') hook hash it
       unitName,
+      creditCode: creditCode || '000000000000000000',
       region,
+      address: address || '未填写',
+      buildingArea: buildingArea ? parseFloat(buildingArea) : 0,
+      personnelCount: personnelCount ? parseInt(personnelCount) : 0,
+      contactPerson: contactPerson || '未填写',
+      contactPhone: contactPhone || '00000000000',
       role: 'admin',
       account
     });
@@ -54,11 +60,12 @@ const createAdminUser = async (email, password, unitName, region) => {
 
 // Get arguments from command line
 const args = process.argv.slice(2);
-if (args.length !== 4) {
-  console.log('Usage: node createAdmin.js <email> <password> <unitName> <region>');
+if (args.length < 4) {
+  console.log('Usage: node createAdmin.js <email> <password> <unitName> <creditCode> <region> [address] [buildingArea] [personnelCount] [contactPerson] [contactPhone]');
+  console.log('Minimum required: email, password, unitName, creditCode, region');
   process.exit(1);
 }
 
-const [email, password, unitName, region] = args;
-createAdminUser(email, password, unitName, region);
+const [email, password, unitName, creditCode, region, address, buildingArea, personnelCount, contactPerson, contactPhone] = args;
+createAdminUser(email, password, unitName, creditCode, region, address, buildingArea, personnelCount, contactPerson, contactPhone);
 

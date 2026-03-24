@@ -1,11 +1,8 @@
-import FilterIcon from '@/assets/filter.svg';
+import { ReactComponent as FilterIcon } from '@/assets/filter.svg';
 import { KnowledgeRouteKey } from '@/constants/knowledge';
+import { IChunkListResult, useSelectChunkList } from '@/hooks/chunk-hooks';
 import { useTranslate } from '@/hooks/common-hooks';
-import {
-  IChunkListResult,
-  useSelectChunkList,
-} from '@/hooks/use-chunk-request';
-import { useKnowledgeBaseId } from '@/hooks/use-knowledge-request';
+import { useKnowledgeBaseId } from '@/hooks/knowledge-hooks';
 import {
   ArrowLeftOutlined,
   CheckCircleOutlined,
@@ -32,15 +29,16 @@ import {
   Typography,
 } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
-import { Link } from 'react-router';
+import { Link } from 'umi';
 import { ChunkTextMode } from '../../constant';
 
 const { Text } = Typography;
 
-interface IProps extends Pick<
-  IChunkListResult,
-  'searchString' | 'handleInputChange' | 'available' | 'handleSetAvailable'
-> {
+interface IProps
+  extends Pick<
+    IChunkListResult,
+    'searchString' | 'handleInputChange' | 'available' | 'handleSetAvailable'
+  > {
   checked: boolean;
   selectAllChunk: (checked: boolean) => void;
   createChunk: () => void;

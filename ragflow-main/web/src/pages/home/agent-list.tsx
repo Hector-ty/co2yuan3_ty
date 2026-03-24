@@ -1,20 +1,13 @@
-import { HomeCard } from '@/components/home-card';
 import { MoreButton } from '@/components/more-button';
 import { RenameDialog } from '@/components/rename-dialog';
 import { useNavigatePage } from '@/hooks/logic-hooks/navigate-hooks';
 import { useFetchAgentListByPage } from '@/hooks/use-agent-request';
-import { useEffect } from 'react';
 import { AgentDropdown } from '../agents/agent-dropdown';
 import { useRenameAgent } from '../agents/use-rename-agent';
+import { ApplicationCard } from './application-card';
 
-export function Agents({
-  setListLength,
-  setLoading,
-}: {
-  setListLength: (length: number) => void;
-  setLoading?: (loading: boolean) => void;
-}) {
-  const { data, loading } = useFetchAgentListByPage();
+export function Agents() {
+  const { data } = useFetchAgentListByPage();
   const { navigateToAgent } = useNavigatePage();
   const {
     agentRenameLoading,
@@ -25,17 +18,12 @@ export function Agents({
     showAgentRenameModal,
   } = useRenameAgent();
 
-  useEffect(() => {
-    setListLength(data?.length || 0);
-    setLoading?.(loading || false);
-  }, [data, setListLength, loading, setLoading]);
-
   return (
     <>
       {data.slice(0, 10).map((x) => (
-        <HomeCard
+        <ApplicationCard
           key={x.id}
-          data={{ name: x.title, ...x } as any}
+          app={x}
           onClick={navigateToAgent(x.id)}
           moreDropdown={
             <AgentDropdown
@@ -45,7 +33,7 @@ export function Agents({
               <MoreButton></MoreButton>
             </AgentDropdown>
           }
-        ></HomeCard>
+        ></ApplicationCard>
       ))}
       {agentRenameVisible && (
         <RenameDialog

@@ -19,20 +19,25 @@ import logging
 import uuid
 from functools import wraps
 from datetime import datetime
-
-from flask import jsonify, request
+from flask import request, jsonify
 from flask_login import current_user, login_user
 from itsdangerous.url_safe import URLSafeTimedSerializer as Serializer
 
+from api import settings
 from api.common.exceptions import AdminException, UserNotFoundError
-from api.common.base64 import encode_to_base64
+from api.db.init_data import encode_to_base64
 from api.db.services import UserService
-from common.constants import ActiveEnum, StatusEnum
+from api.db import ActiveEnum, StatusEnum
 from api.utils.crypt import decrypt
-from common.misc_utils import get_uuid
-from common.time_utils import current_timestamp, datetime_format, get_format_time
-from common.connection_utils import sync_construct_response
-from common import settings
+from api.utils import (
+    current_timestamp,
+    datetime_format,
+    get_format_time,
+    get_uuid,
+)
+from api.utils.api_utils import (
+    construct_response,
+)
 
 
 def setup_auth(login_manager):
@@ -130,7 +135,7 @@ def login_admin(email: str, password: str):
     user.last_login_time = get_format_time()
     user.save()
     msg = "Welcome back!"
-    return sync_construct_response(data=resp, auth=user.get_id(), message=msg)
+    return construct_response(data=resp, auth=user.get_id(), message=msg)
 
 
 def check_admin(username: str, password: str):
@@ -170,17 +175,17 @@ def login_verify(f):
         username = auth.parameters['username']
         password = auth.parameters['password']
         try:
-            if not check_admin(username, password):
+            if check_admin(username, password) is False:
                 return jsonify({
                     "code": 500,
                     "message": "Access denied",
                     "data": None
                 }), 200
-        except Exception:
-            logging.exception("An error occurred during admin login verification.")
+        except Exception as e:
+            error_msg = str(e)
             return jsonify({
                 "code": 500,
-                "message": "An internal server error occurred."
+                "message": error_msg
             }), 200
 
         return f(*args, **kwargs)

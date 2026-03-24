@@ -86,6 +86,7 @@ const mapAndValidateData = async (rawData, mappingTemplate, userAccount, default
       account: userAccount,
       activityData: {
         fossilFuels: { solid: {}, liquid: {}, gas: {} },
+        fugitiveEmissions: { airConditioning: {}, fireSuppression: {} },
         mobileSources: { fuel: {}, mileage: {} },
         indirectEmissions: {},
         intensityMetrics: {}
@@ -100,6 +101,28 @@ const mapAndValidateData = async (rawData, mappingTemplate, userAccount, default
 
       if (!dbPath) continue; // 如果没有映射，则跳过
 
+      // 已弃用的字段列表
+      const deprecatedFields = [
+        'activityData.fossilFuels.solid.cokingCoal',
+        'activityData.fossilFuels.solid.briquettes',
+        'activityData.fossilFuels.solid.coke',
+        'activityData.fossilFuels.solid.otherCokingProducts',
+        'activityData.fossilFuels.liquid.crudeOil',
+        'activityData.fossilFuels.liquid.naphtha',
+        'activityData.fossilFuels.liquid.asphalt',
+        'activityData.fossilFuels.liquid.lubricants',
+        'activityData.fossilFuels.liquid.petroleumCoke',
+        'activityData.fossilFuels.liquid.petrochemicalFeedstock',
+        'activityData.fossilFuels.liquid.otherOils',
+        'activityData.fossilFuels.gas.refineryGas'
+      ];
+      
+      // 检查是否是已弃用的字段
+      if (deprecatedFields.includes(dbPath)) {
+        rowErrors.push(`列 '${fileColumn}' 映射到的字段 '${dbPath}' 已被弃用，请使用其他字段。`);
+        continue;
+      }
+      
       // 检查数据库路径是否存在于 CarbonData Schema 中
       if (!schemaPaths.includes(dbPath) && !dbPath.startsWith('activityData.')) {
         rowErrors.push(`列 '${fileColumn}' 映射到的数据库字段 '${dbPath}' 无效。`);

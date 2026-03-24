@@ -1,21 +1,16 @@
 import { Images } from '@/constants/common';
 import { api_host } from '@/utils/api';
-import { useParams, useSearchParams } from 'react-router';
-// import Docx from './docx';
-// import Excel from './excel';
-// import Image from './image';
-// import Md from './md';
-// import Pdf from './pdf';
-// import Text from './text';
+import { Flex } from 'antd';
+import { useParams, useSearchParams } from 'umi';
+import Docx from './docx';
+import Excel from './excel';
+import Image from './image';
+import Md from './md';
+import Pdf from './pdf';
+import Text from './text';
 
-import { DocPreviewer } from '@/components/document-preview/doc-preview';
-import { ExcelCsvPreviewer } from '@/components/document-preview/excel-preview';
-import { ImagePreviewer } from '@/components/document-preview/image-preview';
-import Md from '@/components/document-preview/md';
-import PdfPreview from '@/components/document-preview/pdf-preview';
-import { TxtPreviewer } from '@/components/document-preview/txt-preview';
 import { previewHtmlFile } from '@/utils/file-util';
-// import styles from './index.less';
+import styles from './index.less';
 
 // TODO: The interface returns an incorrect content-type for the SVG.
 
@@ -25,7 +20,6 @@ const DocumentViewer = () => {
   const ext = currentQueryParameters.get('ext');
   const prefix = currentQueryParameters.get('prefix');
   const api = `${api_host}/${prefix || 'file'}/get/${documentId}`;
-  // request.head
 
   if (ext === 'html' && documentId) {
     previewHtmlFile(documentId);
@@ -33,26 +27,19 @@ const DocumentViewer = () => {
   }
 
   return (
-    <section className="w-full h-full">
+    <section className={styles.viewerWrapper}>
       {Images.includes(ext!) && (
-        <div className="flex w-full h-full items-center justify-center">
-          {/* <Image src={api} preview={false}></Image> */}
-          <ImagePreviewer className="w-full !h-dvh p-5" url={api} />
-        </div>
+        <Flex className={styles.image} align="center" justify="center">
+          <Image src={api} preview={false}></Image>
+        </Flex>
       )}
-      {(ext === 'md' || ext === 'mdx') && (
-        <Md url={api} className="!h-dvh p-5"></Md>
-      )}
-      {ext === 'txt' && <TxtPreviewer url={api}></TxtPreviewer>}
+      {ext === 'md' && <Md filePath={api}></Md>}
+      {ext === 'txt' && <Text filePath={api}></Text>}
 
-      {ext === 'pdf' && (
-        <PdfPreview url={api} className="!h-dvh p-5"></PdfPreview>
-      )}
-      {(ext === 'xlsx' || ext === 'xls') && (
-        <ExcelCsvPreviewer url={api}></ExcelCsvPreviewer>
-      )}
+      {ext === 'pdf' && <Pdf url={api}></Pdf>}
+      {(ext === 'xlsx' || ext === 'xls') && <Excel filePath={api}></Excel>}
 
-      {ext === 'docx' && <DocPreviewer url={api}></DocPreviewer>}
+      {ext === 'docx' && <Docx filePath={api}></Docx>}
     </section>
   );
 };

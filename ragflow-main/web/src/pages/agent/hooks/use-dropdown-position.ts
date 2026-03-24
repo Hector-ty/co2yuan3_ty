@@ -1,4 +1,3 @@
-import { ReactFlowInstance } from '@xyflow/react';
 import { useCallback } from 'react';
 import {
   DROPDOWN_HORIZONTAL_OFFSET,
@@ -10,9 +9,7 @@ import {
  * Dropdown position calculation Hook
  * Responsible for calculating dropdown menu position relative to placeholder node
  */
-export const useDropdownPosition = (
-  reactFlowInstance?: ReactFlowInstance<any, any>,
-) => {
+export const useDropdownPosition = (reactFlowInstance: any) => {
   /**
    * Calculate dropdown menu position
    * @param clientX Mouse click screen X coordinate

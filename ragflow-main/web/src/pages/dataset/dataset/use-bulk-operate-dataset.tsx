@@ -1,4 +1,3 @@
-import { useSetModalState } from '@/hooks/common-hooks';
 import {
   UseRowSelectionType,
   useSelectedIds,
@@ -10,7 +9,7 @@ import {
 } from '@/hooks/use-document-request';
 import { IDocumentInfo } from '@/interfaces/database/document';
 import { Ban, CircleCheck, CircleX, Play, Trash2 } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { DocumentType, RunningStatus } from './constant';
@@ -31,19 +30,9 @@ export function useBulkOperateDataset({
   const { runDocumentByIds } = useRunDocument();
   const { setDocumentStatus } = useSetDocumentStatus();
   const { removeDocument } = useRemoveDocument();
-  const { visible, showModal, hideModal } = useSetModalState();
-
-  const chunkNum = useMemo(() => {
-    if (!documents.length) {
-      return 0;
-    }
-    return documents.reduce((acc, cur) => {
-      return acc + cur.chunk_num;
-    }, 0);
-  }, [documents]);
 
   const runDocument = useCallback(
-    async (run: number, option?: { delete: boolean; apply_kb: boolean }) => {
+    (run: number) => {
       const nonVirtualKeys = selectedRowKeys.filter(
         (x) =>
           !documents.some((y) => x === y.id && y.type === DocumentType.Virtual),
@@ -53,22 +42,18 @@ export function useBulkOperateDataset({
         toast.error(t('Please select a non-empty file list'));
         return;
       }
-      await runDocumentByIds({
+      runDocumentByIds({
         documentIds: nonVirtualKeys,
         run,
-        option,
+        shouldDelete: false,
       });
-      hideModal();
     },
-    [documents, runDocumentByIds, selectedRowKeys, hideModal, t],
+    [documents, runDocumentByIds, selectedRowKeys, t],
   );
 
-  const handleRunClick = useCallback(
-    (option?: { delete: boolean; apply_kb: boolean }) => {
-      runDocument(1, option);
-    },
-    [runDocument],
-  );
+  const handleRunClick = useCallback(() => {
+    runDocument(1);
+  }, [runDocument]);
 
   const handleCancelClick = useCallback(() => {
     runDocument(2);
@@ -121,7 +106,7 @@ export function useBulkOperateDataset({
       id: 'run',
       label: t('knowledgeDetails.run'),
       icon: <Play />,
-      onClick: () => showModal(),
+      onClick: handleRunClick,
     },
     {
       id: 'cancel',
@@ -142,5 +127,5 @@ export function useBulkOperateDataset({
     },
   ];
 
-  return { chunkNum, list, visible, hideModal, showModal, handleRunClick };
+  return { list };
 }

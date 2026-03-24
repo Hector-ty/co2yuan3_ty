@@ -1,6 +1,7 @@
 import { Collapse } from '@/components/collapse';
 import { CrossLanguageFormField } from '@/components/cross-language-form-field';
 import { FormContainer } from '@/components/form-container';
+import { KnowledgeBaseFormField } from '@/components/knowledge-base-item';
 import { MetadataFilter } from '@/components/metadata-filter';
 import { RerankFormFields } from '@/components/rerank';
 import { SimilaritySliderFormField } from '@/components/similarity-slider';
@@ -16,9 +17,7 @@ import { DescriptionField } from '../../components/description-field';
 import { FormWrapper } from '../../components/form-wrapper';
 import {
   EmptyResponseField,
-  MemoryDatasetForm,
   RetrievalPartialSchema,
-  useHideKnowledgeGraphField,
 } from '../../retrieval-form/next';
 import { useValues } from '../use-values';
 import { useWatchFormChange } from '../use-watch-change';
@@ -36,15 +35,15 @@ const RetrievalForm = () => {
     resolver: zodResolver(FormSchema),
   });
 
-  const hideKnowledgeGraphField = useHideKnowledgeGraphField(form);
-
   useWatchFormChange(form);
 
   return (
     <Form {...form}>
       <FormWrapper>
-        <DescriptionField></DescriptionField>
-        <MemoryDatasetForm></MemoryDatasetForm>
+        <FormContainer>
+          <DescriptionField></DescriptionField>
+          <KnowledgeBaseFormField showVariable></KnowledgeBaseFormField>
+        </FormContainer>
         <Collapse title={<div>{t('flow.advancedSettings')}</div>}>
           <FormContainer>
             <SimilaritySliderFormField
@@ -52,21 +51,12 @@ const RetrievalForm = () => {
               isTooltipShown
             ></SimilaritySliderFormField>
             <TopNFormField></TopNFormField>
-            {hideKnowledgeGraphField || (
-              <>
-                <RerankFormFields></RerankFormFields>
-                <MetadataFilter canReference></MetadataFilter>
-              </>
-            )}
-
+            <RerankFormFields></RerankFormFields>
+            <MetadataFilter></MetadataFilter>
             <EmptyResponseField></EmptyResponseField>
-            {hideKnowledgeGraphField || (
-              <>
-                <CrossLanguageFormField name="cross_languages"></CrossLanguageFormField>
-                <UseKnowledgeGraphFormField name="use_kg"></UseKnowledgeGraphFormField>
-                <TOCEnhanceFormField name="toc_enhance"></TOCEnhanceFormField>
-              </>
-            )}
+            <CrossLanguageFormField name="cross_languages"></CrossLanguageFormField>
+            <UseKnowledgeGraphFormField name="use_kg"></UseKnowledgeGraphFormField>
+            <TOCEnhanceFormField name="toc_enhance"></TOCEnhanceFormField>
           </FormContainer>
         </Collapse>
       </FormWrapper>

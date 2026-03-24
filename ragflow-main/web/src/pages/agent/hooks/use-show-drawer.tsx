@@ -14,7 +14,6 @@ export const useShowFormDrawer = () => {
     setClickedNodeId,
     getNode,
     setClickedToolId,
-    getOperatorTypeFromId,
   } = useGraphStore((state) => state);
   const {
     visible: formDrawerVisible,
@@ -24,25 +23,16 @@ export const useShowFormDrawer = () => {
 
   const handleShow = useCallback(
     (e: React.MouseEvent<Element>, nodeId: string) => {
-      const toolId = (e.target as HTMLElement).dataset.toolId;
-      const tool = (e.target as HTMLElement).dataset.tool;
-
+      const tool = get(e.target, 'dataset.tool');
       // TODO: Operator type judgment should be used
-      const operatorType = getOperatorTypeFromId(nodeId);
-      if (
-        (operatorType === Operator.Tool && !tool) ||
-        [Operator.LoopStart, Operator.ExitLoop].includes(
-          operatorType as Operator,
-        )
-      ) {
+      if (nodeId.startsWith(Operator.Tool) && !tool) {
         return;
       }
       setClickedNodeId(nodeId);
-      // Guess this could gracefully handle the case where the tool id is not provided?
-      setClickedToolId(toolId || tool);
+      setClickedToolId(tool);
       showFormDrawer();
     },
-    [getOperatorTypeFromId, setClickedNodeId, setClickedToolId, showFormDrawer],
+    [setClickedNodeId, setClickedToolId, showFormDrawer],
   );
 
   return {

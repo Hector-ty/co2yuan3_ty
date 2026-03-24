@@ -7,18 +7,14 @@ import { z } from 'zod';
 import { CrossLanguageFormField } from '@/components/cross-language-form-field';
 import { FormContainer } from '@/components/form-container';
 import {
-  MetadataFilter,
-  MetadataFilterSchema,
-} from '@/components/metadata-filter';
-import {
-  RerankFormFields,
   initialTopKValue,
+  RerankFormFields,
   topKSchema,
 } from '@/components/rerank';
 import {
-  SimilaritySliderFormField,
   initialSimilarityThresholdValue,
   initialVectorSimilarityWeightValue,
+  SimilaritySliderFormField,
   similarityThresholdSchema,
   vectorSimilarityWeightSchema,
 } from '@/components/similarity-slider';
@@ -28,16 +24,16 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { UseKnowledgeGraphFormField } from '@/components/use-knowledge-graph-item';
 import { useTestRetrieval } from '@/hooks/use-knowledge-request';
 import { trim } from 'lodash';
-import { Send } from 'lucide-react';
+import { CirclePlay } from 'lucide-react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router';
 
 type TestingFormProps = Pick<
   ReturnType<typeof useTestRetrieval>,
@@ -50,8 +46,6 @@ export default function TestingForm({
   setValues,
 }: TestingFormProps) {
   const { t } = useTranslation();
-  const { id } = useParams();
-  const knowledgeBaseId = id;
 
   const formSchema = z.object({
     question: z.string().min(1, {
@@ -61,8 +55,6 @@ export default function TestingForm({
     ...vectorSimilarityWeightSchema,
     ...topKSchema,
     use_kg: z.boolean().optional(),
-    kb_ids: z.array(z.string()).optional(),
-    ...MetadataFilterSchema,
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -72,7 +64,6 @@ export default function TestingForm({
       ...initialVectorSimilarityWeightValue,
       ...initialTopKValue,
       use_kg: false,
-      kb_ids: [knowledgeBaseId],
     },
   });
 
@@ -100,14 +91,13 @@ export default function TestingForm({
           <CrossLanguageFormField
             name={'cross_languages'}
           ></CrossLanguageFormField>
-          <MetadataFilter prefix=""></MetadataFilter>
         </FormContainer>
         <FormField
           control={form.control}
           name="question"
           render={({ field }) => (
             <FormItem>
-              {/* <FormLabel>{t('knowledgeDetails.testText')}</FormLabel> */}
+              <FormLabel>{t('knowledgeDetails.testText')}</FormLabel>
               <FormControl>
                 <Textarea {...field}></Textarea>
               </FormControl>
@@ -122,9 +112,8 @@ export default function TestingForm({
             disabled={!!!trim(question)}
             loading={loading}
           >
-            {/* {!loading && <CirclePlay />} */}
+            {!loading && <CirclePlay />}
             {t('knowledgeDetails.testingLabel')}
-            <Send />
           </ButtonLoading>
         </div>
       </form>

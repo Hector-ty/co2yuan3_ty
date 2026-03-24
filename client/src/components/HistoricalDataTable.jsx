@@ -1,17 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   Button, IconButton, Collapse, Box, CircularProgress, Typography,
-  useMediaQuery, useTheme
+  useMediaQuery, useTheme, TablePagination, Checkbox
 } from '@mui/material';
 import { Delete, ExpandMore, ExpandLess } from '@mui/icons-material';
 import TableRowDetail from './TableRowDetail';
+import { formatNumber } from '../utils/formatNumber';
 
-const HistoricalDataTable = ({ data, loading, onSelect, onDelete, onSaveEdit }) => {
+const HistoricalDataTable = ({ 
+  data, 
+  loading, 
+  onDelete, 
+  onBatchDelete,
+  onSaveEdit,
+  page = 0,
+  pageSize = 50,
+  total = 0,
+  onPageChange,
+  onPageSizeChange
+}) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
   const [editingRowKey, setEditingRowKey] = useState('');
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
+  // 切换页码时清空选择
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page]);
 
   const toggleRowExpansion = (id) => {
     const newExpandedRowKeys = expandedRowKeys.includes(id)
@@ -24,10 +42,13 @@ const HistoricalDataTable = ({ data, loading, onSelect, onDelete, onSaveEdit }) 
   };
 
   const handleEdit = (id) => {
-    setEditingRowKey(id);
-    if (!expandedRowKeys.includes(id)) {
-      setExpandedRowKeys([...expandedRowKeys, id]);
-    }
+    // 使用requestAnimationFrame延迟状态更新，避免阻塞UI
+    requestAnimationFrame(() => {
+      setEditingRowKey(id);
+      if (!expandedRowKeys.includes(id)) {
+        setExpandedRowKeys([...expandedRowKeys, id]);
+      }
+    });
   };
 
   const handleSave = () => {
@@ -64,6 +85,29 @@ const HistoricalDataTable = ({ data, loading, onSelect, onDelete, onSaveEdit }) 
     );
   }
 
+  const dataIds = (data || []).map(r => r._id || r.id).filter(Boolean);
+  const handleSelectAll = () => {
+    if (selectedIds.size === dataIds.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(dataIds));
+    }
+  };
+  const handleToggleSelect = (id) => {
+    if (!id) return;
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const handleBatchDeleteClick = () => {
+    if (selectedIds.size === 0 || !onBatchDelete) return;
+    onBatchDelete(Array.from(selectedIds));
+    setSelectedIds(new Set());
+  };
+
   return (
     <TableContainer 
       component={Paper}
@@ -76,32 +120,56 @@ const HistoricalDataTable = ({ data, loading, onSelect, onDelete, onSaveEdit }) 
         }
       }}
     >
+      {selectedIds.size > 0 && onBatchDelete && (
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          py: 1,
+          px: 2,
+          borderBottom: '1px solid',
+          borderColor: 'divider'
+        }}>
+          <Typography variant="body2" color="text.secondary">已选 {selectedIds.size} 条</Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<Delete />}
+            onClick={handleBatchDeleteClick}
+          >
+            删除选中
+          </Button>
+        </Box>
+      )}
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell sx={{ minWidth: 80 }}>年份</TableCell>
-            <TableCell sx={{ minWidth: 120 }}>行政区划</TableCell>
-            <TableCell sx={{ minWidth: 120 }}>总排放量 (tCO₂)</TableCell>
+            <TableCell padding="checkbox" sx={{ minWidth: 90 }}>
+              <Checkbox
+                indeterminate={dataIds.length > 0 && selectedIds.size > 0 && selectedIds.size < dataIds.length}
+                checked={dataIds.length > 0 && selectedIds.size === dataIds.length}
+                onChange={handleSelectAll}
+                inputProps={{ 'aria-label': '全选' }}
+              />
+              <Typography component="span" variant="body2" sx={{ ml: 0.5 }}>全选</Typography>
+            </TableCell>
+            <TableCell sx={{ minWidth: 80, fontWeight: 'bold' }}>年份</TableCell>
+            <TableCell sx={{ minWidth: 120, fontWeight: 'bold', pl: 6 }}>行政区划</TableCell>
+            <TableCell sx={{ minWidth: 120, fontWeight: 'bold' }}>单位名称</TableCell>
+            <TableCell sx={{ minWidth: 120, fontWeight: 'bold', pl: 6 }}>总排放量 (tCO₂)</TableCell>
             <TableCell sx={{ 
-              minWidth: 150, 
+              minWidth: 220, 
               textAlign: 'right',
-              paddingRight: '16px' // 使用标准padding，去掉多余的空白
+              paddingRight: '16px'
             }}>
               <Box sx={{
                 display: 'flex',
-                justifyContent: 'flex-end',
                 alignItems: 'center',
-                position: 'relative'
+                justifyContent: 'flex-end',
+                gap: { xs: 0.5, sm: 1 }
               }}>
-                <Box sx={{
-                  position: 'absolute',
-                  left: '88%', 
-                  transform: 'translateX(-50%)',
-                  width: '100%',
-                  textAlign: 'center'
-                }}>
-                  操作
-                </Box>
+                <Box component="span" sx={{ minWidth: 128, textAlign: 'right', mr: 3.8, fontWeight: 'bold' }}>修改时间</Box>
+                <Box component="span" sx={{ minWidth: 80, textAlign: 'center', fontWeight: 'bold' }}>操作</Box>
               </Box>
             </TableCell>
           </TableRow>
@@ -110,9 +178,7 @@ const HistoricalDataTable = ({ data, loading, onSelect, onDelete, onSaveEdit }) 
           {data.map(record => {
             // 安全地获取排放量数据
             const totalEmissions = record?.calculatedEmissions?.totalEmissions;
-            const displayEmissions = totalEmissions !== undefined && totalEmissions !== null 
-              ? totalEmissions.toFixed(2) 
-              : '0.00';
+            const displayEmissions = formatNumber(totalEmissions ?? 0);
             
             // 安全地获取地区名称
             const regionName = record?.regionName || record?.regionCode || '未知区域';
@@ -123,9 +189,18 @@ const HistoricalDataTable = ({ data, loading, onSelect, onDelete, onSaveEdit }) 
             return (
               <React.Fragment key={recordId}>
                 <TableRow hover>
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      checked={selectedIds.has(recordId)}
+                      onChange={() => handleToggleSelect(recordId)}
+                      disabled={!(record?._id || record?.id)}
+                      inputProps={{ 'aria-label': `选择 ${regionName} ${record?.year}` }}
+                    />
+                  </TableCell>
                   <TableCell>{record?.year || '-'}</TableCell>
                   <TableCell>{regionName}</TableCell>
-                  <TableCell>{displayEmissions}</TableCell>
+                  <TableCell>{record?.account?.unitName || '-'}</TableCell>
+                  <TableCell sx={{ pl: 6 }}>{displayEmissions}</TableCell>
                   <TableCell sx={{ 
                     textAlign: 'right',
                     paddingRight: '16px' // 使用标准padding，与其他列保持一致
@@ -134,15 +209,20 @@ const HistoricalDataTable = ({ data, loading, onSelect, onDelete, onSaveEdit }) 
                       display: 'flex', 
                       gap: { xs: 0.5, sm: 1 }, 
                       flexWrap: 'wrap',
+                      alignItems: 'center',
                       justifyContent: 'flex-end' // 右对齐，让按钮向后靠
                     }}>
-                      <Button 
-                        size="small" 
-                        onClick={() => onSelect(record)}
-                        sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                      >
-                        图表
-                      </Button>
+                      {(record?.updatedAt || record?.createdAt) && (
+                        <Typography component="span" variant="body2" color="text.secondary" sx={{ mr: 0.5 }}>
+                          {new Date(record.updatedAt || record.createdAt).toLocaleString('zh-CN', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </Typography>
+                      )}
                       <IconButton 
                         size="small" 
                         onClick={() => onDelete(recordId)}
@@ -161,9 +241,13 @@ const HistoricalDataTable = ({ data, loading, onSelect, onDelete, onSaveEdit }) 
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={4}>
-                    <Collapse in={expandedRowKeys.includes(recordId)} timeout="auto" unmountOnExit>
-                      <Box sx={{ margin: 1 }}>
+                  <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+                    <Collapse 
+                      in={expandedRowKeys.includes(recordId)} 
+                      timeout={200} 
+                      unmountOnExit
+                    >
+                      <Box sx={{ margin: 1, width: '100%', boxSizing: 'border-box' }}>
                         <TableRowDetail
                           record={record}
                           isEditing={editingRowKey === recordId}
@@ -180,6 +264,22 @@ const HistoricalDataTable = ({ data, loading, onSelect, onDelete, onSaveEdit }) 
           })}
         </TableBody>
       </Table>
+      {/* 分页控件 */}
+      <TablePagination
+        component="div"
+        count={total}
+        page={page - 1} // MUI使用0-based索引
+        onPageChange={onPageChange}
+        rowsPerPage={pageSize}
+        onRowsPerPageChange={onPageSizeChange}
+        rowsPerPageOptions={[10, 25, 50, 100]}
+        labelRowsPerPage="每页条数:"
+        labelDisplayedRows={({ from, to, count }) => `${from}-${to} 共 ${count !== -1 ? count : `超过 ${to}`} 条`}
+        sx={{
+          borderTop: '1px solid',
+          borderColor: 'divider'
+        }}
+      />
     </TableContainer>
   );
 };

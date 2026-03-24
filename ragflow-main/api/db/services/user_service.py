@@ -24,10 +24,9 @@ from api.db import UserTenantRole
 from api.db.db_models import DB, UserTenant
 from api.db.db_models import User, Tenant
 from api.db.services.common_service import CommonService
-from common.misc_utils import get_uuid
-from common.time_utils import current_timestamp, datetime_format
-from common.constants import StatusEnum
-from common import settings
+from api.utils import get_uuid, current_timestamp, datetime_format
+from api.db import StatusEnum
+from rag.settings import MINIO
 
 
 class UserService(CommonService):
@@ -116,13 +115,10 @@ class UserService(CommonService):
             kwargs["password"] = generate_password_hash(
                 str(kwargs["password"]))
 
-        current_ts = current_timestamp()
-        current_date = datetime_format(datetime.now())
-
-        kwargs["create_time"] = current_ts
-        kwargs["create_date"] = current_date
-        kwargs["update_time"] = current_ts
-        kwargs["update_date"] = current_date
+        kwargs["create_time"] = current_timestamp()
+        kwargs["create_date"] = datetime_format(datetime.now())
+        kwargs["update_time"] = current_timestamp()
+        kwargs["update_date"] = datetime_format(datetime.now())
         obj = cls.model(**kwargs).save(force_insert=True)
         return obj
 
@@ -164,7 +160,7 @@ class UserService(CommonService):
     @classmethod
     @DB.connection_context()
     def get_all_users(cls):
-        users = cls.model.select().order_by(cls.model.email)
+        users = cls.model.select()
         return list(users)
 
 
@@ -223,8 +219,8 @@ class TenantService(CommonService):
     @classmethod
     @DB.connection_context()
     def user_gateway(cls, tenant_id):
-        hash_obj = hashlib.sha256(tenant_id.encode("utf-8"))
-        return int(hash_obj.hexdigest(), 16)%len(settings.MINIO)
+        hashobj = hashlib.sha256(tenant_id.encode("utf-8"))
+        return int(hashobj.hexdigest(), 16)%len(MINIO)
 
 
 class UserTenantService(CommonService):

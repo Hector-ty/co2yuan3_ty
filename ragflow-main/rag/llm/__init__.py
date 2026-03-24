@@ -37,7 +37,7 @@ class SupportedLiteLLMProvider(StrEnum):
     TogetherAI = "TogetherAI"
     Anthropic = "Anthropic"
     Ollama = "Ollama"
-    LongCat = "LongCat"
+    Meituan = "Meituan"
     CometAPI = "CometAPI"
     SILICONFLOW = "SILICONFLOW"
     OpenRouter = "OpenRouter"
@@ -49,13 +49,6 @@ class SupportedLiteLLMProvider(StrEnum):
     Lingyi_AI = "01.AI"
     GiteeAI = "GiteeAI"
     AI_302 = "302.AI"
-    JiekouAI = "Jiekou.AI"
-    ZHIPU_AI = "ZHIPU-AI"
-    MiniMax = "MiniMax"
-    DeerAPI = "DeerAPI"
-    GPUStack = "GPUStack"
-    OpenAI = "OpenAI"
-    Azure_OpenAI = "Azure-OpenAI"
 
 
 FACTORY_DEFAULT_BASE_URL = {
@@ -63,7 +56,7 @@ FACTORY_DEFAULT_BASE_URL = {
     SupportedLiteLLMProvider.Dashscope: "https://dashscope.aliyuncs.com/compatible-mode/v1",
     SupportedLiteLLMProvider.Moonshot: "https://api.moonshot.cn/v1",
     SupportedLiteLLMProvider.Ollama: "",
-    SupportedLiteLLMProvider.LongCat: "https://api.longcat.chat/openai",
+    SupportedLiteLLMProvider.Meituan: "https://api.longcat.chat/openai",
     SupportedLiteLLMProvider.CometAPI: "https://api.cometapi.com/v1",
     SupportedLiteLLMProvider.SILICONFLOW: "https://api.siliconflow.cn/v1",
     SupportedLiteLLMProvider.OpenRouter: "https://openrouter.ai/api/v1",
@@ -76,11 +69,6 @@ FACTORY_DEFAULT_BASE_URL = {
     SupportedLiteLLMProvider.GiteeAI: "https://ai.gitee.com/v1/",
     SupportedLiteLLMProvider.AI_302: "https://api.302.ai/v1",
     SupportedLiteLLMProvider.Anthropic: "https://api.anthropic.com/",
-    SupportedLiteLLMProvider.JiekouAI: "https://api.jiekou.ai/openai",
-    SupportedLiteLLMProvider.ZHIPU_AI: "https://open.bigmodel.cn/api/paas/v4",
-    SupportedLiteLLMProvider.MiniMax: "https://api.minimaxi.com/v1",
-    SupportedLiteLLMProvider.DeerAPI: "https://api.deerapi.com/v1",
-    SupportedLiteLLMProvider.OpenAI: "https://api.openai.com/v1",
 }
 
 
@@ -99,7 +87,7 @@ LITELLM_PROVIDER_PREFIX = {
     SupportedLiteLLMProvider.TogetherAI: "together_ai/",
     SupportedLiteLLMProvider.Anthropic: "",  # don't need a prefix
     SupportedLiteLLMProvider.Ollama: "ollama_chat/",
-    SupportedLiteLLMProvider.LongCat: "openai/",
+    SupportedLiteLLMProvider.Meituan: "openai/",
     SupportedLiteLLMProvider.CometAPI: "openai/",
     SupportedLiteLLMProvider.SILICONFLOW: "openai/",
     SupportedLiteLLMProvider.OpenRouter: "openai/",
@@ -111,13 +99,6 @@ LITELLM_PROVIDER_PREFIX = {
     SupportedLiteLLMProvider.Lingyi_AI: "openai/",
     SupportedLiteLLMProvider.GiteeAI: "openai/",
     SupportedLiteLLMProvider.AI_302: "openai/",
-    SupportedLiteLLMProvider.JiekouAI: "openai/",
-    SupportedLiteLLMProvider.ZHIPU_AI: "openai/",
-    SupportedLiteLLMProvider.MiniMax: "openai/",
-    SupportedLiteLLMProvider.DeerAPI: "openai/",
-    SupportedLiteLLMProvider.GPUStack: "openai/",
-    SupportedLiteLLMProvider.OpenAI: "openai/",
-    SupportedLiteLLMProvider.Azure_OpenAI: "azure/",
 }
 
 ChatModel = globals().get("ChatModel", {})
@@ -126,7 +107,6 @@ EmbeddingModel = globals().get("EmbeddingModel", {})
 RerankModel = globals().get("RerankModel", {})
 Seq2txtModel = globals().get("Seq2txtModel", {})
 TTSModel = globals().get("TTSModel", {})
-OcrModel = globals().get("OcrModel", {})
 
 
 MODULE_MAPPING = {
@@ -136,7 +116,6 @@ MODULE_MAPPING = {
     "rerank_model": RerankModel,
     "sequence2txt_model": Seq2txtModel,
     "tts_model": TTSModel,
-    "ocr_model": OcrModel,
 }
 
 package_name = __name__
@@ -178,5 +157,4 @@ __all__ = [
     "RerankModel",
     "Seq2txtModel",
     "TTSModel",
-    "OcrModel",
 ]

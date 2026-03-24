@@ -30,15 +30,8 @@ import * as ReactDOM from 'react-dom';
 
 import { $createVariableNode } from './variable-node';
 
-import { JsonSchemaDataType } from '@/pages/agent/constant';
-import {
-  useFindAgentStructuredOutputLabel,
-  useShowSecondaryMenu,
-} from '@/pages/agent/hooks/use-build-structured-output';
-import { useFilterQueryVariableOptionsByTypes } from '@/pages/agent/hooks/use-get-begin-query';
-import { get } from 'lodash';
+import { useBuildQueryVariableOptions } from '@/pages/agent/hooks/use-get-begin-query';
 import { PromptIdentity } from '../../agent-form/use-build-prompt-options';
-import { StructuredOutputSecondaryMenu } from '../structured-output-secondary-menu';
 import { ProgrammaticTag } from './constant';
 import './index.css';
 class VariableInnerOption extends MenuOption {
@@ -46,21 +39,18 @@ class VariableInnerOption extends MenuOption {
   value: string;
   parentLabel: string | JSX.Element;
   icon?: ReactNode;
-  type?: string;
 
   constructor(
     label: string,
     value: string,
     parentLabel: string | JSX.Element,
     icon?: ReactNode,
-    type?: string,
   ) {
     super(value);
     this.label = label;
     this.value = value;
     this.parentLabel = parentLabel;
     this.icon = icon;
-    this.type = type;
   }
 }
 
@@ -85,17 +75,13 @@ function VariablePickerMenuItem({
   index,
   option,
   selectOptionAndCleanUp,
-  types,
 }: {
   index: number;
   option: VariableOption;
-  types?: JsonSchemaDataType[];
   selectOptionAndCleanUp: (
     option: VariableOption | VariableInnerOption,
   ) => void;
 }) {
-  const showSecondaryMenu = useShowSecondaryMenu();
-
   return (
     <li
       key={option.key}
@@ -105,38 +91,17 @@ function VariablePickerMenuItem({
       id={'typeahead-item-' + index}
     >
       <div>
-        <span className="text text-text-secondary">{option.title}</span>
+        <span className="text text-slate-500">{option.title}</span>
         <ul className="pl-2 py-1">
-          {option.options.map((x) => {
-            const shouldShowSecondary = showSecondaryMenu(x.value, x.label);
-
-            if (shouldShowSecondary) {
-              return (
-                <StructuredOutputSecondaryMenu
-                  key={x.value}
-                  data={x}
-                  types={types}
-                  click={(y) =>
-                    selectOptionAndCleanUp({
-                      ...x,
-                      ...y,
-                    } as VariableInnerOption)
-                  }
-                ></StructuredOutputSecondaryMenu>
-              );
-            }
-
-            return (
-              <li
-                key={x.value}
-                onClick={() => selectOptionAndCleanUp(x)}
-                className="hover:bg-bg-card p-1 text-text-primary rounded-sm flex justify-between items-center"
-              >
-                <span className="truncate flex-1 min-w-0">{x.label}</span>
-                <span className="text-text-secondary">{get(x, 'type')}</span>
-              </li>
-            );
-          })}
+          {option.options.map((x) => (
+            <li
+              key={x.value}
+              onClick={() => selectOptionAndCleanUp(x)}
+              className="hover:bg-slate-300 p-1"
+            >
+              {x.label}
+            </li>
+          ))}
         </ul>
       </div>
     </li>
@@ -151,7 +116,6 @@ export type VariablePickerMenuOptionType = {
     label: string;
     value: string;
     icon: ReactNode;
-    type?: string;
   }>;
 };
 
@@ -159,17 +123,13 @@ export type VariablePickerMenuPluginProps = {
   value?: string;
   extraOptions?: VariablePickerMenuOptionType[];
   baseOptions?: VariablePickerMenuOptionType[];
-  types?: JsonSchemaDataType[];
 };
 export default function VariablePickerMenuPlugin({
   value,
   extraOptions,
   baseOptions,
-  types,
 }: VariablePickerMenuPluginProps): JSX.Element {
   const [editor] = useLexicalComposerContext();
-
-  const findAgentStructuredOutputLabel = useFindAgentStructuredOutputLabel();
 
   // const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('/', {
   //   minLength: 0,
@@ -192,7 +152,7 @@ export default function VariablePickerMenuPlugin({
 
   const [queryString, setQueryString] = React.useState<string | null>('');
 
-  let options = useFilterQueryVariableOptionsByTypes({ types });
+  let options = useBuildQueryVariableOptions();
 
   if (baseOptions) {
     options = baseOptions as typeof options;
@@ -220,13 +180,7 @@ export default function VariablePickerMenuPlugin({
           x.label,
           x.title,
           x.options.map((y) => {
-            return new VariableInnerOption(
-              y.label,
-              y.value,
-              x.label,
-              y.icon,
-              y.type,
-            );
+            return new VariableInnerOption(y.label, y.value, x.label, y.icon);
           }),
         ),
     );
@@ -246,18 +200,9 @@ export default function VariablePickerMenuPlugin({
         return pre.concat(cur.options);
       }, []);
 
-      // agent structured output
-      const agentStructuredOutput = findAgentStructuredOutputLabel(
-        value,
-        children,
-      );
-      if (agentStructuredOutput) {
-        return agentStructuredOutput;
-      }
-
       return children.find((x) => x.value === value);
     },
-    [findAgentStructuredOutputLabel, options],
+    [options],
   );
 
   const onSelectOption = useCallback(
@@ -390,14 +335,13 @@ export default function VariablePickerMenuPlugin({
         const nextOptions = buildNextOptions();
         return anchorElementRef.current && nextOptions.length
           ? ReactDOM.createPortal(
-              <div className="typeahead-popover w-80 p-2 bg-bg-base">
-                <ul className="scroll-auto overflow-x-hidden">
+              <div className="typeahead-popover w-[200px] p-2">
+                <ul className="overflow-y-auto !scrollbar-thin overflow-x-hidden">
                   {nextOptions.map((option, i: number) => (
                     <VariablePickerMenuItem
                       index={i}
                       key={option.key}
                       option={option}
-                      types={types}
                       selectOptionAndCleanUp={selectOptionAndCleanUp}
                     />
                   ))}

@@ -1,3 +1,4 @@
+import { SelectWithSearch } from '@/components/originui/select-with-search';
 import {
   FormControl,
   FormField,
@@ -5,80 +6,58 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { ReactNode } from 'react';
+import { toLower } from 'lodash';
+import { ReactNode, useMemo } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { JsonSchemaDataType } from '../../constant';
-import {
-  BuildQueryVariableOptions,
-  useFilterQueryVariableOptionsByTypes,
-} from '../../hooks/use-get-begin-query';
-import { GroupedSelectWithSecondaryMenu } from './select-with-secondary-menu';
+import { VariableType } from '../../constant';
+import { useBuildQueryVariableOptions } from '../../hooks/use-get-begin-query';
 
 type QueryVariableProps = {
   name?: string;
-  types?: JsonSchemaDataType[];
+  type?: VariableType;
   label?: ReactNode;
-  hideLabel?: boolean;
-  className?: string;
-  onChange?: (value: string) => void;
-  pureQuery?: boolean;
-  value?: string;
-} & BuildQueryVariableOptions;
+};
 
 export function QueryVariable({
   name = 'query',
-  types = [],
+  type,
   label,
-  hideLabel = false,
-  className,
-  onChange,
-  pureQuery = false,
-  value,
-  nodeIds = [],
-  variablesExceptOperatorOutputs,
 }: QueryVariableProps) {
   const { t } = useTranslation();
   const form = useFormContext();
 
-  const finalOptions = useFilterQueryVariableOptionsByTypes({
-    types,
-    nodeIds,
-    variablesExceptOperatorOutputs,
-  });
+  const nextOptions = useBuildQueryVariableOptions();
 
-  const renderWidget = (
-    value?: string,
-    handleChange?: (value: string) => void,
-  ) => (
-    <GroupedSelectWithSecondaryMenu
-      options={finalOptions}
-      value={value}
-      onChange={(val) => {
-        handleChange?.(val);
-        onChange?.(val);
-      }}
-      // allowClear
-      types={types}
-    ></GroupedSelectWithSecondaryMenu>
-  );
-
-  if (pureQuery) {
-    renderWidget(value, onChange);
-  }
+  const finalOptions = useMemo(() => {
+    return type
+      ? nextOptions.map((x) => {
+          return {
+            ...x,
+            options: x.options.filter((y) => toLower(y.type).includes(type)),
+          };
+        })
+      : nextOptions;
+  }, [nextOptions, type]);
 
   return (
     <FormField
       control={form.control}
       name={name}
       render={({ field }) => (
-        <FormItem className={className}>
-          {hideLabel || label || (
+        <FormItem>
+          {label || (
             <FormLabel tooltip={t('flow.queryTip')}>
               {t('flow.query')}
             </FormLabel>
           )}
-          <FormControl>{renderWidget(field.value, field.onChange)}</FormControl>
+          <FormControl>
+            <SelectWithSearch
+              options={finalOptions}
+              {...field}
+              allowClear
+            ></SelectWithSearch>
+          </FormControl>
           <FormMessage />
         </FormItem>
       )}

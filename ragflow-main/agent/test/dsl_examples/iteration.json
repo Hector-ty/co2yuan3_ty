@@ -82,7 +82,7 @@
   },
   "history": [],
   "path": [],
-  "retrieval": {"chunks": [], "doc_aggs": []},
+  "retrival": {"chunks": [], "doc_aggs": []},
   "globals": {
     "sys.query": "",
     "sys.user_id": "",

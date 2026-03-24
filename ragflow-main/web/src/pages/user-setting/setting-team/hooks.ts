@@ -4,7 +4,7 @@ import {
   useAgreeTenant,
   useDeleteTenantUser,
   useFetchUserInfo,
-} from '@/hooks/use-user-setting-request';
+} from '@/hooks/user-setting-hooks';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -51,7 +51,7 @@ export const useHandleDeleteUser = () => {
     });
   };
 
-  return { handleDeleteTenantUser, deleteTenantUser, loading };
+  return { handleDeleteTenantUser, loading };
 };
 
 export const useHandleAgreeTenant = () => {

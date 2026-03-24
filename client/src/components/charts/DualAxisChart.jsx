@@ -1,11 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
+import { formatNumber } from '../../utils/formatNumber';
 
 const DualAxisChart = ({ data }) => {
   const chartRef = useRef(null);
 
   useEffect(() => {
+    if (!chartRef.current) return;
+    
     const chart = echarts.init(chartRef.current);
+    const safeData = data || { years: [], areaIntensity: [], perCapitaIntensity: [] };
     const option = {
       tooltip: {
         trigger: 'axis',
@@ -14,6 +18,16 @@ const DualAxisChart = ({ data }) => {
           crossStyle: {
             color: '#fff' // 确保十字准星颜色为白色
           }
+        },
+        formatter: (params) => {
+          if (!params || !params.length) return '';
+          const y = params[0].axisValue || '';
+          let s = y + '年<br/>';
+          params.forEach(p => {
+            const unit = (p.seriesName || '').includes('建筑面积') ? ' kgCO₂/m²' : ' tCO₂/人';
+            s += (p.marker || '') + (p.seriesName || '') + ': ' + formatNumber(p.value) + unit + '<br/>';
+          });
+          return s;
         }
       },
       grid: {
@@ -25,7 +39,7 @@ const DualAxisChart = ({ data }) => {
       xAxis: [
         {
           type: 'category',
-          data: data.years,
+          data: safeData.years,
           axisPointer: {
             type: 'shadow'
           },
@@ -64,13 +78,13 @@ const DualAxisChart = ({ data }) => {
         {
           name: '单位建筑面积碳排放',
           type: 'bar',
-          data: data.areaIntensity
+          data: safeData.areaIntensity
         },
         {
           name: '人均碳排放',
           type: 'line',
           yAxisIndex: 1,
-          data: data.perCapitaIntensity
+          data: safeData.perCapitaIntensity
         }
       ]
     };

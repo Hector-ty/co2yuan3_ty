@@ -1,31 +1,35 @@
-# 使用 Node.js 20 的轻量版镜像
-# 注意：需要配置 Docker 镜像加速器才能正常拉取镜像
-FROM node:20-alpine
+# ============================================
+# 第一阶段：构建阶段
+# ============================================
+FROM docker.m.daocloud.io/library/node:20-bookworm-slim AS builder
 
-# 设置工作目录
 WORKDIR /app
 
-# 配置 Alpine 镜像源（使用阿里云镜像加速）
-RUN sed -i 's|http://dl-cdn.alpinelinux.org|https://mirrors.aliyun.com|g' /etc/apk/repositories || \
-    echo "https://mirrors.aliyun.com/alpine/v$(cut -d. -f1,2 /etc/alpine-release)/main" > /etc/apk/repositories && \
-    echo "https://mirrors.aliyun.com/alpine/v$(cut -d. -f1,2 /etc/alpine-release)/community" >> /etc/apk/repositories
-
-# 先复制依赖文件（利用 Docker 缓存）
 COPY package*.json ./
 
-# 设置 npm 镜像为阿里源，加速依赖下载
-RUN npm config set registry https://registry.npmmirror.com
+RUN npm config set registry https://registry.npmmirror.com \
+    && npm install --production --legacy-peer-deps --no-audit --progress=false
 
-# 安装项目依赖（跳过 peer 冲突，禁用审计日志）
-RUN npm install --production --legacy-peer-deps --no-audit --progress=false
-
-# 复制项目全部代码
 COPY . .
 
-# 暴露端口
+# ============================================
+# 第二阶段：运行阶段（Gotenberg 优先；Gotenberg 500 时用本机 LibreOffice 回退）
+# ============================================
+FROM docker.m.daocloud.io/library/node:20-bookworm-slim
+
+WORKDIR /app
+
+RUN sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || true \
+    && sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list 2>/dev/null || true \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends libreoffice-core libreoffice-writer libreoffice-common fonts-dejavu-core fonts-liberation fonts-noto-core fonts-noto-cjk fontconfig \
+    && rm -rf /var/lib/apt/lists/* \
+    && fc-cache -f
+
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+COPY . .
+
 EXPOSE 8080
 
-# 启动服务
 CMD ["npm", "start"]
-
-

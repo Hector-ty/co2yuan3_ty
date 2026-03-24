@@ -34,8 +34,6 @@ import { OutputFormatFormField } from './common-form-fields';
 import { EmailFormFields } from './email-form-fields';
 import { ImageFormFields } from './image-form-fields';
 import { PdfFormFields } from './pdf-form-fields';
-import { PptFormFields } from './ppt-form-fields';
-import { SpreadsheetFormFields } from './spreadsheet-form-fields';
 import { buildFieldNameWithPrefix } from './utils';
 import { AudioFormFields, VideoFormFields } from './video-form-fields';
 
@@ -43,8 +41,6 @@ const outputList = buildOutputList(initialParserValues.outputs);
 
 const FileFormatWidgetMap = {
   [FileType.PDF]: PdfFormFields,
-  [FileType.Spreadsheet]: SpreadsheetFormFields,
-  [FileType.PowerPoint]: PptFormFields,
   [FileType.Video]: VideoFormFields,
   [FileType.Audio]: AudioFormFields,
   [FileType.Email]: EmailFormFields,
@@ -69,8 +65,6 @@ export const FormSchema = z.object({
       fields: z.array(z.string()).optional(),
       llm_id: z.string().optional(),
       system_prompt: z.string().optional(),
-      table_result_type: z.string().optional(),
-      markdown_image_response_type: z.string().optional(),
     }),
   ),
 });
@@ -190,8 +184,6 @@ const ParserForm = ({ node }: INextOperatorForm) => {
       lang: '',
       fields: [],
       llm_id: '',
-      table_result_type: '',
-      markdown_image_response_type: '',
     });
   }, [append]);
 

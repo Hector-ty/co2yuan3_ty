@@ -27,8 +27,7 @@ from api.db.services.common_service import CommonService
 from api.db.services.document_service import DocumentService
 from api.db.services.knowledgebase_service import KnowledgebaseService
 from api.db.services.task_service import GRAPH_RAPTOR_FAKE_DOC_ID
-from common.misc_utils import get_uuid
-from common.time_utils import current_timestamp, datetime_format
+from api.utils import current_timestamp, datetime_format, get_uuid
 
 
 class PipelineOperationLogService(CommonService):
@@ -101,14 +100,14 @@ class PipelineOperationLogService(CommonService):
         ok, document = DocumentService.get_by_id(referred_document_id)
         if not ok:
             logging.warning(f"Document for referred_document_id {referred_document_id} not found")
-            return None
+            return
         DocumentService.update_progress_immediately([document.to_dict()])
         ok, document = DocumentService.get_by_id(referred_document_id)
         if not ok:
             logging.warning(f"Document for referred_document_id {referred_document_id} not found")
-            return None
+            return
         if document.progress not in [1, -1]:
-            return None
+            return
         operation_status = document.run
 
         if pipeline_id:
@@ -121,7 +120,7 @@ class PipelineOperationLogService(CommonService):
         else:
             ok, kb_info = KnowledgebaseService.get_by_id(document.kb_id)
             if not ok:
-                raise RuntimeError(f"Cannot find dataset {document.kb_id} for referred_document {referred_document_id}")
+                raise RuntimeError(f"Cannot find knowledge base {document.kb_id} for referred_document {referred_document_id}")
 
             tenant_id = kb_info.tenant_id
             title = document.parser_id
@@ -159,7 +158,7 @@ class PipelineOperationLogService(CommonService):
             document_name=document.name,
             document_suffix=document.suffix,
             document_type=document.type,
-            source_from=document.source_type.split("/")[0],
+            source_from="",  # TODO: add in the future
             progress=document.progress,
             progress_msg=document.progress_msg,
             process_begin_at=document.process_begin_at,
@@ -169,12 +168,11 @@ class PipelineOperationLogService(CommonService):
             operation_status=operation_status,
             avatar=avatar,
         )
-        timestamp = current_timestamp()
-        datetime_now = datetime_format(datetime.now())
-        log["create_time"] = timestamp
-        log["create_date"] = datetime_now
-        log["update_time"] = timestamp
-        log["update_date"] = datetime_now
+        log["create_time"] = current_timestamp()
+        log["create_date"] = datetime_format(datetime.now())
+        log["update_time"] = current_timestamp()
+        log["update_date"] = datetime_format(datetime.now())
+
         with DB.atomic():
             obj = cls.save(**log)
 

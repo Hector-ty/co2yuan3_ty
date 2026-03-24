@@ -23,7 +23,7 @@ export type RAGFlowPaginationType = {
 
 export function RAGFlowPagination({
   current = 1,
-  pageSize = 5,
+  pageSize = 10,
   total = 0,
   onChange,
   showSizeChanger = true,
@@ -135,9 +135,7 @@ export function RAGFlowPagination({
 
   return (
     <section className="flex items-center justify-end text-text-sub-title-invert">
-      <span className="mr-4 text-text-primary">
-        {t('pagination.total', { total: total })}
-      </span>
+      <span className="mr-4">{t('pagination.total', { total: total })}</span>
       <Pagination className="w-auto mx-0 mr-4">
         <PaginationContent>
           <PaginationItem>
@@ -152,7 +150,7 @@ export function RAGFlowPagination({
             ) : (
               <PaginationItem
                 key={page}
-                className={cn('text-text-disabled', {
+                className={cn({
                   ['bg-bg-card rounded-md text-text-primary']:
                     currentPage === page,
                 })}
@@ -172,14 +170,13 @@ export function RAGFlowPagination({
           </PaginationItem>
         </PaginationContent>
       </Pagination>
-
       {showSizeChanger && (
         <RAGFlowSelect
           options={sizeChangerOptions}
           value={currentPageSize}
           onChange={handlePageSizeChange}
-          triggerClassName="bg-bg-card border-transparent"
-        />
+          triggerClassName="bg-bg-card"
+        ></RAGFlowSelect>
       )}
     </section>
   );

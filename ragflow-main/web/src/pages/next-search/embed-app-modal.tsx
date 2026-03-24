@@ -1,5 +1,4 @@
-import HighLightMarkdown from '@/components/highlight-markdown';
-import message from '@/components/ui/message';
+import HightLightMarkdown from '@/components/highlight-markdown';
 import { Modal } from '@/components/ui/modal/modal';
 import { RAGFlowSelect } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -8,6 +7,7 @@ import {
   LanguageAbbreviationMap,
 } from '@/constants/common';
 import { useTranslate } from '@/hooks/common-hooks';
+import { message } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 
 type IEmbedAppModalProps = {
@@ -102,7 +102,7 @@ const EmbedAppModal = (props: IEmbedAppModalProps) => {
           </label>
           {/* <div className=" border rounded-lg"> */}
           {/* <pre className="text-sm whitespace-pre-wrap">{text}</pre> */}
-          <HighLightMarkdown>{text}</HighLightMarkdown>
+          <HightLightMarkdown>{text}</HightLightMarkdown>
           {/* </div> */}
         </div>
 

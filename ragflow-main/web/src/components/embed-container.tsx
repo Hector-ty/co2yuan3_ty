@@ -1,6 +1,7 @@
-import { useFetchAppConf } from '@/hooks/logic-hooks';
+import * as React from 'react';
+import type { PropsWithChildren } from 'react';
+import { useFetchAppConf } from '../hooks/logic-hooks';
 import { RefreshCcw } from 'lucide-react';
-import { PropsWithChildren } from 'react';
 import { RAGFlowAvatar } from './ragflow-avatar';
 import { Button } from './ui/button';
 

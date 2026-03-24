@@ -5,14 +5,14 @@ import {
   useSendMessageWithSse,
 } from '@/hooks/logic-hooks';
 import { useGetChatSearchParams } from '@/hooks/use-chat-request';
-import { IAnswer, IMessage, Message } from '@/interfaces/database/chat';
+import { IAnswer, Message } from '@/interfaces/database/chat';
 import api from '@/utils/api';
 import { buildMessageUuid } from '@/utils/chat';
 import { trim } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { v4 as uuid } from 'uuid';
+import { IMessage } from '../chat/interface';
 import { useBuildFormRefs } from './use-build-form-refs';
-import { useCreateConversationBeforeSendMessage } from './use-chat-url';
 import { useUploadFile } from './use-upload-file';
 
 export function useSendMultipleChatMessage(
@@ -30,11 +30,7 @@ export function useSendMultipleChatMessage(
     api.completeConversation,
   );
 
-  const { handleUploadFile, isUploading, files, clearFiles, removeFile } =
-    useUploadFile();
-
-  const { createConversationBeforeSendMessage } =
-    useCreateConversationBeforeSendMessage();
+  const { handleUploadFile, fileIds, clearFileIds } = useUploadFile();
 
   const { setFormRef, getLLMConfigById, isLLMConfigEmpty } =
     useBuildFormRefs(chatBoxIds);
@@ -175,17 +171,9 @@ export function useSendMultipleChatMessage(
     ],
   );
 
-  const handlePressEnter = useCallback(async () => {
+  const handlePressEnter = useCallback(() => {
     if (trim(value) === '') return;
     const id = uuid();
-
-    const data = await createConversationBeforeSendMessage(value);
-
-    if (data === undefined) {
-      return;
-    }
-
-    const { targetConversationId, currentMessages } = data;
 
     chatBoxIds.forEach((chatBoxId) => {
       if (!isLLMConfigEmpty(chatBoxId)) {
@@ -194,8 +182,7 @@ export function useSendMultipleChatMessage(
           id,
           role: MessageType.User,
           chatBoxId,
-          files,
-          conversationId: targetConversationId,
+          doc_ids: fileIds,
         });
       }
     });
@@ -209,26 +196,22 @@ export function useSendMultipleChatMessage(
               id,
               content: value.trim(),
               role: MessageType.User,
-              files,
-              conversationId: targetConversationId,
+              doc_ids: fileIds,
             },
             chatBoxId,
-            currentConversationId: targetConversationId,
-            messages: currentMessages,
           });
         }
       });
     }
-    clearFiles();
+    clearFileIds();
   }, [
     value,
-    createConversationBeforeSendMessage,
     chatBoxIds,
     allDone,
-    clearFiles,
+    clearFileIds,
     isLLMConfigEmpty,
     addNewestQuestion,
-    files,
+    fileIds,
     setValue,
     sendMessage,
   ]);
@@ -252,7 +235,5 @@ export function useSendMultipleChatMessage(
     sendLoading: !allDone,
     setFormRef,
     handleUploadFile,
-    isUploading,
-    removeFile,
   };
 }

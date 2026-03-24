@@ -13,16 +13,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-import asyncio
 import logging
 import os
 import re
 from abc import ABC
 
-from common.constants import LLMType
+from api.db import LLMType
 from api.db.services.llm_service import LLMBundle
 from agent.component.llm import LLMParam, LLM
-from common.connection_utils import timeout
+from api.utils.api_utils import timeout
 from rag.llm.chat_model import ERROR_PREFIX
 
 
@@ -98,10 +97,7 @@ class Categorize(LLM, ABC):
     component_name = "Categorize"
 
     @timeout(int(os.environ.get("COMPONENT_EXEC_TIMEOUT", 10*60)))
-    async def _invoke_async(self, **kwargs):
-        if self.check_if_canceled("Categorize processing"):
-            return
-
+    def _invoke(self, **kwargs):
         msg = self._canvas.get_history(self._param.message_history_window_size)
         if not msg:
             msg = [{"role": "user", "content": ""}]
@@ -118,18 +114,10 @@ class Categorize(LLM, ABC):
 ---- Real Data ----
 {} →
 """.format(" | ".join(["{}: \"{}\"".format(c["role"].upper(), re.sub(r"\n", "", c["content"], flags=re.DOTALL)) for c in msg]))
-
-        if self.check_if_canceled("Categorize processing"):
-            return
-
-        ans = await chat_mdl.async_chat(self._param.sys_prompt, [{"role": "user", "content": user_prompt}], self._param.gen_conf())
+        ans = chat_mdl.chat(self._param.sys_prompt, [{"role": "user", "content": user_prompt}], self._param.gen_conf())
         logging.info(f"input: {user_prompt}, answer: {str(ans)}")
         if ERROR_PREFIX in ans:
             raise Exception(ans)
-
-        if self.check_if_canceled("Categorize processing"):
-            return
-
         # Count the number of times each category appears in the answer.
         category_counts = {}
         for c in self._param.category_description.keys():
@@ -144,10 +132,6 @@ class Categorize(LLM, ABC):
 
         self.set_output("category_name", max_category)
         self.set_output("_next", cpn_ids)
-
-    @timeout(int(os.environ.get("COMPONENT_EXEC_TIMEOUT", 10*60)))
-    def _invoke(self, **kwargs):
-        return asyncio.run(self._invoke_async(**kwargs))
 
     def thoughts(self) -> str:
         return "Which should it falls into {}? ...".format(",".join([f"`{c}`" for c, _ in self._param.category_description.items()]))

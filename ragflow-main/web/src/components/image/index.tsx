@@ -1,34 +1,21 @@
 import { api_host } from '@/utils/api';
 import classNames from 'classnames';
-import React from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
-interface IImage extends React.ImgHTMLAttributes<HTMLImageElement> {
+interface IImage {
   id: string;
-  t?: string | number;
-  label?: string;
+  className: string;
+  onClick?(): void;
 }
 
-const Image = ({ id, t, label, className, ...props }: IImage) => {
-  const imageElement = (
+const Image = ({ id, className, ...props }: IImage) => {
+  return (
     <img
       {...props}
-      src={`${api_host}/document/image/${id}${t ? `?_t=${t}` : ''}`}
+      src={`${api_host}/document/image/${id}`}
+      alt=""
       className={classNames('max-w-[45vw] max-h-[40wh] block', className)}
     />
-  );
-
-  if (!label) {
-    return imageElement;
-  }
-
-  return (
-    <div className="relative inline-block w-full">
-      {imageElement}
-      <div className="absolute bottom-2 right-2 bg-accent-primary text-white px-2 py-0.5 rounded-xl text-xs font-normal backdrop-blur-sm">
-        {label}
-      </div>
-    </div>
   );
 };
 

@@ -1,19 +1,16 @@
 import { EmbedContainer } from '@/components/embed-container';
 import { NextMessageInput } from '@/components/message-input/next';
 import MessageItem from '@/components/message-item';
-import PdfSheet from '@/components/pdf-drawer';
+import PdfDrawer from '@/components/pdf-drawer';
 import { useClickDrawer } from '@/components/pdf-drawer/hooks';
-import { useSyncThemeFromParams } from '@/components/theme-provider';
 import { MessageType, SharedFrom } from '@/constants/chat';
-import { useFetchFlowSSE } from '@/hooks/use-agent-request';
-import {
-  useFetchExternalChatInfo,
-  useFetchNextConversationSSE,
-} from '@/hooks/use-chat-request';
+import { useFetchNextConversationSSE } from '@/hooks/chat-hooks';
+import { useFetchFlowSSE } from '@/hooks/flow-hooks';
+import { useFetchExternalChatInfo } from '@/hooks/use-chat-request';
 import i18n from '@/locales/config';
+import { useSendButtonDisabled } from '@/pages/chat/hooks';
 import { buildMessageUuidWithRole } from '@/utils/chat';
 import React, { forwardRef, useMemo } from 'react';
-import { useSendButtonDisabled } from '../hooks/use-button-disabled';
 import {
   useGetSharedChatSearchParams,
   useSendSharedMessage,
@@ -25,10 +22,8 @@ const ChatContainer = () => {
     sharedId: conversationId,
     from,
     locale,
-    theme,
     visibleAvatar,
   } = useGetSharedChatSearchParams();
-  useSyncThemeFromParams(theme);
   const { visible, hideModal, documentId, selectedChunk, clickDocumentButton } =
     useClickDrawer();
 
@@ -57,7 +52,6 @@ const ChatContainer = () => {
       i18n.changeLanguage(locale);
     }
   }, [locale, visibleAvatar]);
-
   const { data: avatarData } = useFetchAvatar();
 
   if (!conversationId) {
@@ -129,12 +123,12 @@ const ChatContainer = () => {
         </div>
       </EmbedContainer>
       {visible && (
-        <PdfSheet
+        <PdfDrawer
           visible={visible}
           hideModal={hideModal}
           documentId={documentId}
           chunk={selectedChunk}
-        ></PdfSheet>
+        ></PdfDrawer>
       )}
     </>
   );

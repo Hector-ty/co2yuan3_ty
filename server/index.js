@@ -7,6 +7,7 @@ const aiRoutes = require('./routes/ai');
 const emissionFactorsRoutes = require('./routes/emissionFactors'); // 导入排放因子路由
 const uploadRoutes = require('./routes/upload'); // 导入上传路由
 const dataMappingRoutes = require('./routes/dataMapping'); // 导入数据映射路由
+const teachingVideosRoutes = require('./routes/teachingVideos'); // 导入教学视频路由
 const ollamaService = require('./services/ollamaService'); // 导入 Ollama 服务
 
 const app = express();
@@ -25,6 +26,7 @@ app.use('/api/ai', aiRoutes); // 添加 AI 路由
 app.use('/api/emission-factors', emissionFactorsRoutes); // 添加排放因子路由
 app.use('/api/upload', uploadRoutes); // 添加上传路由
 app.use('/api/data-mapping', dataMappingRoutes); // 添加数据映射路由
+app.use('/api/teaching-videos', teachingVideosRoutes); // 添加教学视频路由
 
 // 全局错误处理中间件（必须在所有路由之后）
 app.use((err, req, res, next) => {

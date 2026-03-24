@@ -1,5 +1,5 @@
 import { LlmModelType } from '@/constants/knowledge';
-import { useComposeLlmOptionsByModelTypes } from '@/hooks/use-llm-request';
+import { useComposeLlmOptionsByModelTypes } from '@/hooks/llm-hooks';
 import {
   LargeModelFormField,
   OutputFormatFormFieldProps,

@@ -15,21 +15,22 @@
 #
 import logging
 
-from quart import jsonify
+from flask import request, jsonify
 
+from api.db import LLMType
 from api.db.services.document_service import DocumentService
 from api.db.services.knowledgebase_service import KnowledgebaseService
 from api.db.services.llm_service import LLMBundle
-from common.metadata_utils import meta_filter, convert_conditions
-from api.utils.api_utils import apikey_required, build_error_result, get_request_json, validate_request
+from api import settings
+from api.utils.api_utils import validate_request, build_error_result, apikey_required
 from rag.app.tag import label_question
-from common.constants import RetCode, LLMType
-from common import settings
+from api.db.services.dialog_service import meta_filter, convert_conditions
+
 
 @manager.route('/dify/retrieval', methods=['POST'])  # noqa: F821
 @apikey_required
 @validate_request("knowledge_id", "query")
-async def retrieval(tenant_id):
+def retrieval(tenant_id):
     """
     Dify-compatible retrieval API
     ---
@@ -113,14 +114,14 @@ async def retrieval(tenant_id):
       404:
         description: Knowledge base or document not found
     """
-    req = await get_request_json()
+    req = request.json
     question = req["query"]
     kb_id = req["knowledge_id"]
     use_kg = req.get("use_kg", False)
     retrieval_setting = req.get("retrieval_setting", {})
     similarity_threshold = float(retrieval_setting.get("score_threshold", 0.0))
     top = int(retrieval_setting.get("top_k", 1024))
-    metadata_condition = req.get("metadata_condition", {}) or {}
+    metadata_condition = req.get("metadata_condition", {})
     metas = DocumentService.get_meta_by_kbs([kb_id])
 
     doc_ids = []
@@ -128,13 +129,15 @@ async def retrieval(tenant_id):
 
         e, kb = KnowledgebaseService.get_by_id(kb_id)
         if not e:
-            return build_error_result(message="Knowledgebase not found!", code=RetCode.NOT_FOUND)
+            return build_error_result(message="Knowledgebase not found!", code=settings.RetCode.NOT_FOUND)
 
         embd_mdl = LLMBundle(kb.tenant_id, LLMType.EMBEDDING.value, llm_name=kb.embd_id)
-        if metadata_condition:
-            doc_ids.extend(meta_filter(metas, convert_conditions(metadata_condition), metadata_condition.get("logic", "and")))
-        if not doc_ids and metadata_condition:
-            doc_ids = ["-999"]
+        print(metadata_condition)
+        # print("after", convert_conditions(metadata_condition))
+        doc_ids.extend(meta_filter(metas, convert_conditions(metadata_condition)))
+        # print("doc_ids", doc_ids)
+        if not doc_ids and metadata_condition is not None:
+            doc_ids = ['-999']
         ranks = settings.retriever.retrieval(
             question,
             embd_mdl,
@@ -150,7 +153,7 @@ async def retrieval(tenant_id):
         )
 
         if use_kg:
-            ck = await settings.kg_retriever.retrieval(question,
+            ck = settings.kg_retriever.retrieval(question,
                                                  [tenant_id],
                                                  [kb_id],
                                                  embd_mdl,
@@ -176,7 +179,7 @@ async def retrieval(tenant_id):
         if str(e).find("not_found") > 0:
             return build_error_result(
                 message='No chunk found! Check the chunk status please!',
-                code=RetCode.NOT_FOUND
+                code=settings.RetCode.NOT_FOUND
             )
         logging.exception(e)
-        return build_error_result(message=str(e), code=RetCode.SERVER_ERROR)
+        return build_error_result(message=str(e), code=settings.RetCode.SERVER_ERROR)

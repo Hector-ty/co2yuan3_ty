@@ -1,0 +1,12 @@
+<view class="page">
+  <view class="card">
+    <view class="card-title">导出碳排放报告</view>
+    <view class="desc-text">
+      点击下方按钮，将通过后端接口生成并下载 Excel 报告，下载完成后可在微信中直接打开预览。
+    </view>
+    <button class="primary-btn export-btn" loading="{{loading}}" bindtap="onExport">导出 Excel 报告</button>
+    <view wx:if="{{error}}" class="error-text">{{error}}</view>
+    <view wx:if="{{success}}" class="success-text">{{success}}</view>
+  </view>
+</view>
+

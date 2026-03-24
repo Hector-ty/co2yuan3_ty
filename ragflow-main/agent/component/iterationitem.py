@@ -33,9 +33,6 @@ class IterationItem(ComponentBase, ABC):
         self._idx = 0
 
     def _invoke(self, **kwargs):
-        if self.check_if_canceled("IterationItem processing"):
-            return
-
         parent = self.get_parent()
         arr = self._canvas.get_variable_value(parent._param.items_ref)
         if not isinstance(arr, list):
@@ -43,15 +40,10 @@ class IterationItem(ComponentBase, ABC):
             raise Exception(parent._param.items_ref + " must be an array, but its type is "+str(type(arr)))
 
         if self._idx > 0:
-            if self.check_if_canceled("IterationItem processing"):
-                return
             self.output_collation()
 
         if self._idx >= len(arr):
             self._idx = -1
-            return
-
-        if self.check_if_canceled("IterationItem processing"):
             return
 
         self.set_output("item", arr[self._idx])

@@ -2,9 +2,11 @@ import Image from '@/components/image';
 import SvgIcon from '@/components/svg-icon';
 import { IReference, IReferenceChunk } from '@/interfaces/database/chat';
 import { getExtension } from '@/utils/document-util';
+import { InfoCircleOutlined } from '@ant-design/icons';
 import DOMPurify from 'dompurify';
 import { memo, useCallback, useEffect, useMemo } from 'react';
 import Markdown from 'react-markdown';
+import reactStringReplace from 'react-string-replace';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
@@ -12,15 +14,15 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import { visitParents } from 'unist-util-visit-parents';
 
+import { useFetchDocumentThumbnailsByIds } from '@/hooks/document-hooks';
 import { useTranslation } from 'react-i18next';
 
 import 'katex/dist/katex.min.css'; // `rehype-katex` does not import the CSS for you
 
 import {
-  currentReg,
   preprocessLaTeX,
-  replaceTextByOldReg,
   replaceThinkToSection,
+  showImage,
 } from '@/utils/chat';
 
 import { Button } from '@/components/ui/button';
@@ -29,11 +31,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { useFetchDocumentThumbnailsByIds } from '@/hooks/use-document-request';
+import { currentReg, replaceTextByOldReg } from '@/pages/next-chats/utils';
 import classNames from 'classnames';
 import { omit } from 'lodash';
 import { pipe } from 'lodash/fp';
-import reactStringReplace from 'react-string-replace';
+
+const getChunkIndex = (match: string) => Number(match);
 
 // Defining Tailwind CSS class name constants
 const styles = {
@@ -45,8 +48,6 @@ const styles = {
   referenceIcon: 'px-[6px]',
   fileThumbnail: 'inline-block max-w-[40px]',
 };
-
-const getChunkIndex = (match: string) => Number(match);
 
 // TODO: The display of the table is inconsistent with the display previously placed in the MessageItem.
 const MarkdownContent = ({
@@ -84,11 +85,18 @@ const MarkdownContent = ({
     (
       documentId: string,
       chunk: IReferenceChunk,
-      isPdf: boolean = false,
-      documentUrl?: string,
+      // isPdf: boolean,
+      // documentUrl?: string,
     ) =>
       () => {
+        // if (!isPdf) {
+        //   if (!documentUrl) {
+        //     return;
+        //   }
+        //   window.open(documentUrl, '_blank');
+        // } else {
         clickDocumentButton?.(documentId, chunk);
+        // }
       },
     [clickDocumentButton],
   );
@@ -188,10 +196,7 @@ const MarkdownContent = ({
                 )}
                 <Button
                   variant="link"
-                  className={classNames(
-                    styles.documentLink,
-                    'text-wrap flex-1 h-auto',
-                  )}
+                  className={classNames(styles.documentLink, 'text-wrap')}
                   onClick={handleDocumentButtonClick(
                     documentId,
                     chunkItem,
@@ -212,15 +217,32 @@ const MarkdownContent = ({
 
   const renderReference = useCallback(
     (text: string) => {
-      let replacedText = reactStringReplace(text, currentReg, (match) => {
+      let replacedText = reactStringReplace(text, currentReg, (match, i) => {
         const chunkIndex = getChunkIndex(match);
 
-        return (
+        const { imageId, chunkItem, documentId } = getReferenceInfo(chunkIndex);
+
+        const docType = chunkItem?.doc_type;
+
+        return showImage(docType) ? (
+          <Image
+            id={imageId}
+            className={styles.referenceInnerChunkImage}
+            onClick={
+              documentId
+                ? handleDocumentButtonClick(
+                    documentId,
+                    chunkItem,
+                    // fileExtension === 'pdf',
+                    // documentUrl,
+                  )
+                : () => {}
+            }
+          ></Image>
+        ) : (
           <Popover>
             <PopoverTrigger>
-              <span className="text-text-secondary bg-bg-card rounded-2xl px-1 mx-1 text-nowrap">
-                Fig. {chunkIndex + 1}
-              </span>
+              <InfoCircleOutlined className={styles.referenceIcon} />
             </PopoverTrigger>
             <PopoverContent className="!w-fit">
               {getPopoverContent(chunkIndex)}
@@ -231,7 +253,7 @@ const MarkdownContent = ({
 
       return replacedText;
     },
-    [getPopoverContent],
+    [getPopoverContent, getReferenceInfo, handleDocumentButtonClick],
   );
 
   return (

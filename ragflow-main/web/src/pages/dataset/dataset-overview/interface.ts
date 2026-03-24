@@ -20,12 +20,11 @@ export interface FileLogsTableProps {
   active: (typeof LogTabs)[keyof typeof LogTabs];
 }
 
-export interface IOverviewTotal {
+export interface IOverviewTital {
   cancelled: number;
   failed: number;
   finished: number;
   processing: number;
-  downloaded: number;
 }
 
 export interface IFileLogItem {
@@ -50,8 +49,7 @@ export interface IFileLogItem {
   process_duration: number;
   progress: number;
   progress_msg: string;
-  source_type?: string;
-  source_from?: string;
+  source_from: string;
   status: string;
   task_type: string;
   tenant_id: string;

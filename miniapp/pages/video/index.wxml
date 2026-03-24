@@ -1,0 +1,20 @@
+<view class="page">
+  <view class="card">
+    <view class="card-title">教学视频列表</view>
+    <block wx:for="{{videos}}" wx:key="url">
+      <view class="video-block">
+        <view class="video-title">{{item.title}}</view>
+        <video
+          class="video-player"
+          src="{{item.url}}"
+          controls
+          poster="{{item.poster}}"
+        />
+      </view>
+    </block>
+    <view wx:if="{{!videos || videos.length === 0}}" class="empty-text">
+      暂无视频，请联系管理员配置。
+    </view>
+  </view>
+</view>
+

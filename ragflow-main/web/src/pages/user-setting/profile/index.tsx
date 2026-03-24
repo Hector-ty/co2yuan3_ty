@@ -1,7 +1,6 @@
 // src/components/ProfilePage.tsx
 import { AvatarUpload } from '@/components/avatar-upload';
 import PasswordInput from '@/components/originui/password-input';
-import Spotlight from '@/components/spotlight';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -13,7 +12,13 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal/modal';
-import { RAGFlowSelect } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useTranslate } from '@/hooks/common-hooks';
 import { TimezoneList } from '@/pages/user-setting/constants';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,10 +27,6 @@ import { Loader2Icon, PenLine } from 'lucide-react';
 import { FC, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import {
-  ProfileSettingWrapperCard,
-  UserSettingHeader,
-} from '../components/user-setting-header';
 import { EditType, modalTitle, useProfile } from './hooks/use-profile';
 
 const baseSchema = z.object({
@@ -120,21 +121,19 @@ const ProfilePage: FC = () => {
   //   };
 
   return (
-    // <div className="h-full w-full text-text-secondary relative flex flex-col gap-4">
-    <ProfileSettingWrapperCard
-      header={
-        <UserSettingHeader
-          name={t('profile')}
-          description={t('profileDescription')}
-        />
-      }
-    >
-      <Spotlight />
+    <div className="h-full w-full bg-bg-base text-text-secondary p-5">
+      {/* Header */}
+      <header className="flex flex-col gap-1 justify-between items-start mb-6">
+        <h1 className="text-2xl font-bold text-text-primary">{t('profile')}</h1>
+        <div className="text-sm text-text-secondary mb-6">
+          {t('profileDescription')}
+        </div>
+      </header>
 
       {/* Main Content */}
-      <div className="max-w-3xl space-y-11 w-3/4 p-7">
+      <div className="max-w-3xl space-y-11 w-3/4">
         {/* Name */}
-        <div className="flex items-start gap-4 ">
+        <div className="flex items-start gap-4">
           <label className="w-[190px] text-sm font-medium">
             {t('username')}
           </label>
@@ -143,12 +142,12 @@ const ProfilePage: FC = () => {
               {profile.userName}
             </div>
             <Button
-              variant={'ghost'}
+              variant={'secondary'}
               type="button"
               onClick={() => handleEditClick(EditType.editName)}
-              className="text-sm text-text-secondary flex gap-1 px-1 border border-border-button"
+              className="text-sm text-text-secondary flex gap-1 px-1"
             >
-              <PenLine size={12} /> {t('edit')}
+              <PenLine size={12} /> Edit
             </Button>
           </div>
         </div>
@@ -160,7 +159,7 @@ const ProfilePage: FC = () => {
             <AvatarUpload
               value={profile.avatar}
               onChange={handleAvatarUpload}
-              tips={t('avatarTip')}
+              tips={'This will be displayed on your profile.'}
             />
           </div>
         </div>
@@ -175,12 +174,12 @@ const ProfilePage: FC = () => {
               {profile.timeZone}
             </div>
             <Button
-              variant={'ghost'}
+              variant={'secondary'}
               type="button"
               onClick={() => handleEditClick(EditType.editTimeZone)}
-              className="text-sm text-text-secondary flex gap-1 px-1 border border-border-button"
+              className="text-sm text-text-secondary flex gap-1 px-1"
             >
-              <PenLine size={12} /> {t('edit')}
+              <PenLine size={12} /> Edit
             </Button>
           </div>
         </div>
@@ -208,12 +207,12 @@ const ProfilePage: FC = () => {
               {profile.currPasswd ? '********' : ''}
             </div>
             <Button
-              variant={'ghost'}
+              variant={'secondary'}
               type="button"
               onClick={() => handleEditClick(EditType.editPassword)}
-              className="text-sm text-text-secondary flex gap-1 px-1 border border-border-button"
+              className="text-sm text-text-secondary flex gap-1 px-1"
             >
-              <PenLine size={12} /> {t('edit')}
+              <PenLine size={12} /> Edit
             </Button>
           </div>
         </div>
@@ -224,7 +223,6 @@ const ProfilePage: FC = () => {
           title={modalTitle[editType]}
           open={isEditing}
           showfooter={false}
-          maskClosable={false}
           titleClassName="text-base"
           onOpenChange={(open) => {
             if (!open) {
@@ -276,14 +274,23 @@ const ProfilePage: FC = () => {
                         <FormLabel className="text-sm text-text-secondary whitespace-nowrap">
                           {t('timezone')}
                         </FormLabel>
-                        <RAGFlowSelect
-                          options={TimezoneList.map((timeStr) => {
-                            return { value: timeStr, label: timeStr };
-                          })}
-                          placeholder="Select a timeZone"
+                        <Select
                           onValueChange={field.onChange}
                           value={field.value}
-                        />
+                        >
+                          <FormControl className="w-full bg-bg-input border-border-default">
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a timeZone" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {TimezoneList.map((timeStr) => (
+                              <SelectItem key={timeStr} value={timeStr}>
+                                {timeStr}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="flex w-full pt-1">
                         <div className="w-1/4"></div>
@@ -304,7 +311,7 @@ const ProfilePage: FC = () => {
                         <div className="flex flex-col w-full gap-2">
                           <FormLabel
                             required
-                            className="text-sm flex text-text-secondary whitespace-nowrap"
+                            className="text-sm flex justify-between text-text-secondary whitespace-nowrap"
                           >
                             {t('currentPassword')}
                           </FormLabel>
@@ -399,8 +406,7 @@ const ProfilePage: FC = () => {
           </Form>
         </Modal>
       )}
-    </ProfileSettingWrapperCard>
-    // </div>
+    </div>
   );
 };
 

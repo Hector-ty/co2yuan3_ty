@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactECharts from 'echarts-for-react';
 import { Box, Typography } from '@mui/material'; // 使用MUI组件
+import { formatNumber } from '../../utils/formatNumber';
 
 const YearlyEmissionBarChart = ({ yearlyData, comparisonData, compareMode, currentYear }) => {
   if (!yearlyData || yearlyData.length === 0) return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><Typography variant="body1" color="textSecondary">无年度排放数据</Typography></Box>;
@@ -18,9 +19,49 @@ const YearlyEmissionBarChart = ({ yearlyData, comparisonData, compareMode, curre
     const option = {
       tooltip: {
         trigger: 'axis',
-        axisPointer: { type: 'shadow' }
+        axisPointer: { type: 'shadow' },
+        backgroundColor: '#fff',
+        borderColor: '#ccc',
+        borderWidth: 1,
+        formatter: function(params) {
+          try {
+            if (!params || !Array.isArray(params) || params.length === 0) {
+              return '';
+            }
+            const firstParam = params[0];
+            if (!firstParam || !firstParam.name) {
+              return '';
+            }
+            let result = firstParam.name + '<br/>';
+            params.forEach(function(item) {
+              if (!item) return;
+              const marker = item.marker || '';
+              const seriesName = item.seriesName || '数据';
+              let value = 0;
+              if (typeof item.value === 'number') {
+                value = item.value;
+              } else if (item.value !== null && item.value !== undefined) {
+                value = Number(item.value) || 0;
+              }
+              result += marker + seriesName + ': ' + formatNumber(value) + ' tCO₂<br/>';
+            });
+            return result;
+          } catch (error) {
+            console.error('[Tooltip] 格式化错误:', error);
+            return '';
+          }
+        },
+        textStyle: {
+          color: '#333',
+          fontSize: 12
+        }
       },
-      legend: { top: 'bottom' },
+      legend: { 
+        top: 'bottom',
+        textStyle: {
+          color: '#fff'
+        }
+      },
       grid: { 
         left: '10%', 
         right: '10%', 
@@ -31,9 +72,37 @@ const YearlyEmissionBarChart = ({ yearlyData, comparisonData, compareMode, curre
       xAxis: { 
         type: 'category', 
         data: sortedData.map(d => `${d.regionName || d.regionCode || ''}/${d.year || ''}`), 
-        axisLabel: { interval: 0, rotate: 30 } 
+        axisLabel: { 
+          interval: 0, 
+          rotate: 30,
+          color: '#fff'
+        },
+        axisLine: {
+          lineStyle: {
+            color: '#fff'
+          }
+        }
       },
-      yAxis: { type: 'value', name: 'tCO₂' },
+      yAxis: { 
+        type: 'value', 
+        name: 'tCO₂',
+        nameTextStyle: {
+          color: '#fff'
+        },
+        axisLabel: {
+          color: '#fff'
+        },
+        axisLine: {
+          lineStyle: {
+            color: '#fff'
+          }
+        },
+        splitLine: {
+          lineStyle: {
+            color: 'rgba(255, 255, 255, 0.1)'
+          }
+        }
+      },
       series: [
         {
           name: '直接排放',
@@ -43,8 +112,8 @@ const YearlyEmissionBarChart = ({ yearlyData, comparisonData, compareMode, curre
           data: sortedData.map(d => {
             const breakdown = d.calculatedEmissions?.breakdown || {};
             const fossilFuels = breakdown.fossilFuels || 0;
-            const mobileSources = breakdown.mobileSources || 0;
-            return (fossilFuels + mobileSources).toFixed(2);
+            const fugitiveEmissions = breakdown.fugitiveEmissions || 0;
+            return Number((fossilFuels + fugitiveEmissions).toFixed(2));
           })
         },
         {
@@ -56,7 +125,7 @@ const YearlyEmissionBarChart = ({ yearlyData, comparisonData, compareMode, curre
             const breakdown = d.calculatedEmissions?.breakdown || {};
             const electricity = breakdown.electricity || 0;
             const heat = breakdown.heat || 0;
-            return (electricity + heat).toFixed(2);
+            return Number((electricity + heat).toFixed(2));
           })
         },
         {
@@ -65,7 +134,7 @@ const YearlyEmissionBarChart = ({ yearlyData, comparisonData, compareMode, curre
             yAxisIndex: 0,
             data: sortedData.map(d => {
               const total = d.calculatedEmissions?.totalEmissions || 0;
-              return total.toFixed(2);
+              return Number(total.toFixed(2));
             }),
         }
       ]
@@ -94,9 +163,49 @@ const YearlyEmissionBarChart = ({ yearlyData, comparisonData, compareMode, curre
     const option = {
       tooltip: {
         trigger: 'axis',
-        axisPointer: { type: 'shadow' }
+        axisPointer: { type: 'shadow' },
+        backgroundColor: '#fff',
+        borderColor: '#ccc',
+        borderWidth: 1,
+        formatter: function(params) {
+          try {
+            if (!params || !Array.isArray(params) || params.length === 0) {
+              return '';
+            }
+            const firstParam = params[0];
+            if (!firstParam || !firstParam.name) {
+              return '';
+            }
+            let result = firstParam.name + '<br/>';
+            params.forEach(function(item) {
+              if (!item) return;
+              const marker = item.marker || '';
+              const seriesName = item.seriesName || '数据';
+              let value = 0;
+              if (typeof item.value === 'number') {
+                value = item.value;
+              } else if (item.value !== null && item.value !== undefined) {
+                value = Number(item.value) || 0;
+              }
+              result += marker + seriesName + ': ' + formatNumber(value) + ' tCO₂<br/>';
+            });
+            return result;
+          } catch (error) {
+            console.error('[Tooltip] 格式化错误:', error);
+            return '';
+          }
+        },
+        textStyle: {
+          color: '#333',
+          fontSize: 12
+        }
       },
-      legend: { top: 'bottom' },
+      legend: { 
+        top: 'bottom',
+        textStyle: {
+          color: '#fff'
+        }
+      },
       grid: { 
         left: '10%', 
         right: '10%', 
@@ -107,9 +216,37 @@ const YearlyEmissionBarChart = ({ yearlyData, comparisonData, compareMode, curre
       xAxis: {
         type: 'category',
         data: allData.map(d => d.regionName || d.regionCode || '未知区域'),
-        axisLabel: { interval: 0, rotate: 30 }
+        axisLabel: { 
+          interval: 0, 
+          rotate: 30,
+          color: '#fff'
+        },
+        axisLine: {
+          lineStyle: {
+            color: '#fff'
+          }
+        }
       },
-      yAxis: { type: 'value', name: 'tCO₂' },
+      yAxis: { 
+        type: 'value', 
+        name: 'tCO₂',
+        nameTextStyle: {
+          color: '#fff'
+        },
+        axisLabel: {
+          color: '#fff'
+        },
+        axisLine: {
+          lineStyle: {
+            color: '#fff'
+          }
+        },
+        splitLine: {
+          lineStyle: {
+            color: 'rgba(255, 255, 255, 0.1)'
+          }
+        }
+      },
       series: [
         {
           name: '直接排放',
@@ -119,8 +256,8 @@ const YearlyEmissionBarChart = ({ yearlyData, comparisonData, compareMode, curre
           data: allData.map(d => {
             const breakdown = d.calculatedEmissions?.breakdown || {};
             const fossilFuels = breakdown.fossilFuels || 0;
-            const mobileSources = breakdown.mobileSources || 0;
-            return (fossilFuels + mobileSources).toFixed(2);
+            const fugitiveEmissions = breakdown.fugitiveEmissions || 0;
+            return Number((fossilFuels + fugitiveEmissions).toFixed(2));
           })
         },
         {
@@ -132,7 +269,7 @@ const YearlyEmissionBarChart = ({ yearlyData, comparisonData, compareMode, curre
             const breakdown = d.calculatedEmissions?.breakdown || {};
             const electricity = breakdown.electricity || 0;
             const heat = breakdown.heat || 0;
-            return (electricity + heat).toFixed(2);
+            return Number((electricity + heat).toFixed(2));
           })
         },
         {
@@ -141,7 +278,7 @@ const YearlyEmissionBarChart = ({ yearlyData, comparisonData, compareMode, curre
           emphasis: { focus: 'series' },
           data: allData.map(d => {
             const total = d.calculatedEmissions?.totalEmissions || 0;
-            return total.toFixed(2);
+            return Number(total.toFixed(2));
           })
         }
       ]

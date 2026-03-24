@@ -1,18 +1,15 @@
 import { NodeCollapsible } from '@/components/collapse';
 import { RAGFlowAvatar } from '@/components/ragflow-avatar';
-import { useFetchKnowledgeList } from '@/hooks/use-knowledge-request';
-import { useFetchAllMemoryList } from '@/hooks/use-memory-request';
-import { BaseNode } from '@/interfaces/database/flow';
+import { useFetchKnowledgeList } from '@/hooks/knowledge-hooks';
+import { IRetrievalNode } from '@/interfaces/database/flow';
 import { NodeProps, Position } from '@xyflow/react';
 import classNames from 'classnames';
 import { get } from 'lodash';
 import { memo } from 'react';
-import { NodeHandleId, RetrievalFrom } from '../../constant';
-import { RetrievalFormSchemaType } from '../../form/retrieval-form/next';
-import { useGetVariableLabelOrTypeByValue } from '../../hooks/use-get-begin-query';
-import { LabelCard } from './card';
+import { NodeHandleId } from '../../constant';
+import { useGetVariableLabelByValue } from '../../hooks/use-get-begin-query';
 import { CommonHandle, LeftEndHandle } from './handle';
-import styles from './index.module.less';
+import styles from './index.less';
 import NodeHeader from './node-header';
 import { NodeWrapper } from './node-wrapper';
 import { ToolBar } from './toolbar';
@@ -22,20 +19,15 @@ function InnerRetrievalNode({
   data,
   isConnectable = true,
   selected,
-}: NodeProps<BaseNode<RetrievalFormSchemaType>>) {
+}: NodeProps<IRetrievalNode>) {
   const knowledgeBaseIds: string[] = get(data, 'form.kb_ids', []);
-  const memoryIds: string[] = get(data, 'form.memory_ids', []);
   const { list: knowledgeList } = useFetchKnowledgeList(true);
 
-  const { getLabel } = useGetVariableLabelOrTypeByValue({ nodeId: id });
-
-  const isMemory = data.form?.retrieval_from === RetrievalFrom.Memory;
-
-  const memoryList = useFetchAllMemoryList();
+  const getLabel = useGetVariableLabelByValue(id);
 
   return (
     <ToolBar selected={selected} id={id} label={data.label}>
-      <NodeWrapper selected={selected} id={id}>
+      <NodeWrapper selected={selected}>
         <LeftEndHandle></LeftEndHandle>
         <CommonHandle
           id={NodeHandleId.Start}
@@ -53,22 +45,8 @@ function InnerRetrievalNode({
             [styles.nodeHeader]: knowledgeBaseIds.length > 0,
           })}
         ></NodeHeader>
-        <NodeCollapsible items={isMemory ? memoryIds : knowledgeBaseIds}>
+        <NodeCollapsible items={knowledgeBaseIds}>
           {(id) => {
-            if (isMemory) {
-              const item = memoryList.data?.find((y) => id === y.id);
-              return (
-                <LabelCard key={id} className="flex items-center gap-1.5">
-                  <RAGFlowAvatar
-                    className="size-6 rounded-lg"
-                    avatar={item?.avatar ?? ''}
-                    name={item ? item?.name : id}
-                  />
-                  <span className="flex-1 truncate"> {item?.name}</span>
-                </LabelCard>
-              );
-            }
-
             const item = knowledgeList.find((y) => id === y.id);
             const label = getLabel(id);
 
@@ -77,8 +55,9 @@ function InnerRetrievalNode({
                 <div className="flex items-center gap-1.5">
                   <RAGFlowAvatar
                     className="size-6 rounded-lg"
-                    avatar={item?.avatar}
-                    name={item ? item?.name : id}
+                    avatar={id}
+                    name={item?.name || (label as string) || 'CN'}
+                    isPerson={true}
                   />
 
                   <div className={'truncate flex-1'}>{label || item?.name}</div>

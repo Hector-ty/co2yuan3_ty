@@ -9,7 +9,7 @@ metadata:
 spec:
   containers:
     - name: wget
-      image: {{ include "ragflow.imageRepo" (dict "root" . "repo" "busybox") }}
+      image: busybox
       command:
       - 'wget'
       args:

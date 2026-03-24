@@ -97,18 +97,19 @@ const FormLabel = React.forwardRef<
     required?: boolean;
   }
 >(({ className, tooltip, required = false, ...props }, ref) => {
-  const { formItemId } = useFormField();
+  const { error, formItemId } = useFormField();
 
   return (
     <Label
       ref={ref}
-      className={cn(className, 'flex pb-0.5')}
+      className={cn(error && 'text-destructive', className, 'flex pb-0.5')}
       htmlFor={formItemId}
       {...props}
     >
-      {required && <span className="text-state-error">*</span>}
-      {props.children}
-
+      <section>
+        {required && <span className="text-destructive">*</span>}
+        {props.children}
+      </section>
       {tooltip && <FormTooltip tooltip={tooltip}></FormTooltip>}
     </Label>
   );
@@ -170,7 +171,7 @@ const FormMessage = React.forwardRef<
     <p
       ref={ref}
       id={formMessageId}
-      className={cn('text-sm font-medium text-state-error', className)}
+      className={cn('text-sm font-medium text-destructive', className)}
       {...props}
     >
       {body}

@@ -16,59 +16,32 @@ export function useGetNodeTools() {
 }
 
 export function useUpdateAgentNodeTools() {
-  const { generateAgentToolName, generateAgentToolId, updateNodeForm } =
-    useGraphStore((state) => state);
-  const node = useContext(AgentFormContext)!;
+  const { updateNodeForm } = useGraphStore((state) => state);
+  const node = useContext(AgentFormContext);
   const tools = useGetNodeTools();
   const { initializeAgentToolValues } = useAgentToolInitialValues();
 
   const updateNodeTools = useCallback(
-    (value: string) => {
-      if (!node?.id) return;
-
-      // Append
-      if (value === Operator.Retrieval) {
-        updateNodeForm(
-          node.id,
-          [
-            ...tools,
-            {
-              component_name: value,
-              name: generateAgentToolName(node.id, value),
-              params: initializeAgentToolValues(value as Operator),
-              id: generateAgentToolId(value),
-            },
-          ],
-          ['tools'],
-        );
-      }
-      // Toggle
-      else {
-        updateNodeForm(
-          node.id,
-          tools.some((x) => x.component_name === value)
-            ? tools.filter((x) => x.component_name !== value)
-            : [
-                ...tools,
-                {
-                  component_name: value,
-                  name: value,
-                  params: initializeAgentToolValues(value as Operator),
-                  id: generateAgentToolId(value),
+    (value: string[]) => {
+      if (node?.id) {
+        const nextValue = value.reduce<IAgentForm['tools']>((pre, cur) => {
+          const tool = tools.find((x) => x.component_name === cur);
+          pre.push(
+            tool
+              ? tool
+              : {
+                  component_name: cur,
+                  name: cur,
+                  params: initializeAgentToolValues(cur as Operator),
                 },
-              ],
-          ['tools'],
-        );
+          );
+          return pre;
+        }, []);
+
+        updateNodeForm(node?.id, nextValue, ['tools']);
       }
     },
-    [
-      generateAgentToolName,
-      generateAgentToolId,
-      initializeAgentToolValues,
-      node?.id,
-      tools,
-      updateNodeForm,
-    ],
+    [initializeAgentToolValues, node?.id, tools, updateNodeForm],
   );
 
   return { updateNodeTools };
@@ -80,9 +53,8 @@ export function useDeleteAgentNodeTools() {
   const node = useContext(AgentFormContext);
 
   const deleteNodeTool = useCallback(
-    (toolId: string) => () => {
-      const nextTools = tools.filter((x) => x.id !== toolId);
-
+    (value: string) => () => {
+      const nextTools = tools.filter((x) => x.component_name !== value);
       if (node?.id) {
         updateNodeForm(node?.id, nextTools, ['tools']);
       }

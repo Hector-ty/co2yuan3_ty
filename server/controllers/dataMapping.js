@@ -22,31 +22,32 @@ const fieldLabels = {
   'activityData.fossilFuels.solid.anthracite': '无烟煤 (吨)',
   'activityData.fossilFuels.solid.bituminousCoal': '烟煤 (吨)',
   'activityData.fossilFuels.solid.lignite': '褐煤 (吨)',
-  'activityData.fossilFuels.solid.cokingCoal': '炼焦煤 (吨)',
-  'activityData.fossilFuels.solid.briquettes': '型煤 (吨)',
-  'activityData.fossilFuels.solid.coke': '焦炭 (吨)',
-  'activityData.fossilFuels.solid.otherCokingProducts': '其它焦化产品 (吨)',
   
   // 化石燃料 - 液体
-  'activityData.fossilFuels.liquid.crudeOil': '原油 (吨)',
   'activityData.fossilFuels.liquid.fuelOil': '燃料油 (吨)',
   'activityData.fossilFuels.liquid.gasoline': '汽油(非车辆) (吨)',
   'activityData.fossilFuels.liquid.diesel': '柴油(非车辆) (吨)',
   'activityData.fossilFuels.liquid.kerosene': '煤油 (吨)',
   'activityData.fossilFuels.liquid.lpg': '液化石油气 (吨)',
   'activityData.fossilFuels.liquid.lng': '液化天然气 (吨)',
-  'activityData.fossilFuels.liquid.naphtha': '石脑油 (吨)',
-  'activityData.fossilFuels.liquid.asphalt': '沥青 (吨)',
-  'activityData.fossilFuels.liquid.lubricants': '润滑油 (吨)',
-  'activityData.fossilFuels.liquid.petroleumCoke': '石油焦 (吨)',
-  'activityData.fossilFuels.liquid.petrochemicalFeedstock': '石化原料油 (吨)',
-  'activityData.fossilFuels.liquid.otherOils': '其它油品 (吨)',
   
   // 化石燃料 - 气体
   'activityData.fossilFuels.gas.naturalGas': '天然气 (万立方米)',
-  'activityData.fossilFuels.gas.refineryGas': '炼厂干气 (万立方米)',
   'activityData.fossilFuels.gas.cokeOvenGas': '焦炉煤气 (万立方米)',
   'activityData.fossilFuels.gas.pipelineGas': '管道煤气 (万立方米)',
+  
+  // 逸散排放 - 空调系统
+  'activityData.fugitiveEmissions.airConditioning.HCFC-22': 'HCFC-22',
+  'activityData.fugitiveEmissions.airConditioning.HFC-32': 'HFC-32',
+  'activityData.fugitiveEmissions.airConditioning.HFC-125': 'HFC-125',
+  'activityData.fugitiveEmissions.airConditioning.HFC-134a': 'HFC-134a',
+  'activityData.fugitiveEmissions.airConditioning.HFC-143a': 'HFC-143a',
+  'activityData.fugitiveEmissions.airConditioning.HFC-227a': 'HFC-227a',
+  'activityData.fugitiveEmissions.airConditioning.HFC-245fa': 'HFC-245fa',
+  
+  // 逸散排放 - 灭火系统
+  'activityData.fugitiveEmissions.fireSuppression.CO2': 'CO2',
+  'activityData.fugitiveEmissions.fireSuppression.HFC-227ea': 'HFC-227ea',
   
   // 移动源 - 燃料
   'activityData.mobileSources.fuel.gasoline': '汽油 (千克)',

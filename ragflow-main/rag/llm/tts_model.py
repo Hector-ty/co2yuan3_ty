@@ -36,7 +36,7 @@ import requests
 import websocket
 from pydantic import BaseModel, conint
 
-from common.token_utils import num_tokens_from_string
+from rag.utils import num_tokens_from_string
 
 
 class ServeReferenceAudio(BaseModel):
@@ -263,7 +263,7 @@ class SparkTTS(Base):
                 raise Exception(error)
 
             def on_close(self, ws, close_status_code, close_msg):
-                self.audio_queue.put(None)  # None is terminator
+                self.audio_queue.put(None)  # 放入 None 作为结束标志
 
             def on_open(self, ws):
                 def run(*args):

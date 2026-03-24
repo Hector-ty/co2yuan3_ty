@@ -16,7 +16,7 @@
 import argparse
 import os
 from agent.canvas import Canvas
-from common import settings
+from api import settings
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
